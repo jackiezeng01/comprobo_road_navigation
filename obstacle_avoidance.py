@@ -2,120 +2,97 @@ import cv2 as cv
 import numpy as np
 import os
 
-def do_canny(frame):
-    # Converts frame to grayscale because we only need the luminance channel for detecting edges - less computationally expensive
-    gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
-    # Applies a 5x5 gaussian blur with deviation of 0 to frame - not mandatory since Canny will do this for us
-    blur = cv.GaussianBlur(gray, (5, 5), 0)
-    # Applies Canny edge detector with minVal of 50 and maxVal of 150
-    canny = cv.Canny(blur, 50, 150)
-    return canny
 
-def do_segment(frame, x, y, w, h):
-    # Since an image is a multi-directional array containing the relative intensities of each pixel in the image, we can use frame.shape to return a tuple: [number of rows, number of columns, number of channels] of the dimensions of the frame
-    # frame.shape[0] give us the number of rows of pixels the frame has. Since height begins from 0 at the top, the y-coordinate of the bottom of the frame is its height
-    height = frame.shape[0]
-    # Creates a triangular polygon for the mask defined by three (x, y) coordinates
-    polygons = np.array([
-                            [(x, y), (x+w, y), ()]
-                        ])
-    # Creates an image filled with zero intensities with the same dimensions as the frame
-    mask = np.zeros_like(frame)
-    # Allows the mask to be filled with values of 1 and the other areas to be filled with values of 0
-    cv.fillPoly(mask, polygons, 255)
-    # A bitwise and operation between the mask and frame keeps only the triangular area of the frame
-    segment = cv.bitwise_and(frame, mask)
-    return segment
+def find_contours(frame):
+        # convert image to grayscale image
+    gray_image = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    
+    # convert the grayscale image to binary image
+    ret,thresh = cv.threshold(gray_image,127,255,0)
+    
+    # calculate moments of binary image
+    M = cv.moments(thresh)
+    contours,hierarchy = cv.findContours(thresh, 1, 2)
 
-def calculate_lines(frame, lines):
-    # Empty arrays to store the coordinates of the left and right lines
-    left = []
-    right = []
-    # Loops through every detected line
-    for line in lines:
-        # Reshapes line from 2D array to 1D array
-        x1, y1, x2, y2 = line.reshape(4)
-        # Fits a linear polynomial to the x and y coordinates and returns a vector of coefficients which describe the slope and y-intercept
-        parameters = np.polyfit((x1, x2), (y1, y2), 1)
-        slope = parameters[0]
-        y_intercept = parameters[1]
-        # If slope is negative, the line is to the left of the lane, and otherwise, the line is to the right of the lane
-        if slope < 0:
-            left.append((slope, y_intercept))
-        else:
-            right.append((slope, y_intercept))
-    # Averages out all the values for left and right into a single slope and y-intercept value for each line
-    left_avg = np.average(left, axis = 0)
-    right_avg = np.average(right, axis = 0)
-    # Calculates the x1, y1, x2, y2 coordinates for the left and right lines
-    left_line = calculate_coordinates(frame, left_avg)
-    right_line = calculate_coordinates(frame, right_avg)
-    return np.array([left_line, right_line])
+def find_crop_region(contours, areas):
+    max_value = max(areas)
+    largest_contour = contours[areas.index(max_value)]
+    _,y,_,h = cv.boundingRect(largest_contour)
+    return y+h
 
-def calculate_coordinates(frame, parameters):
-    slope, intercept = parameters
-    # Sets initial y-coordinate as height from top down (bottom of the frame)
-    y1 = frame.shape[0]
-    # Sets final y-coordinate as 150 above the bottom of the frame
-    y2 = int(y1 - 150)
-    # Sets initial x-coordinate as (y1 - b) / m since y1 = mx1 + b
-    x1 = int((y1 - intercept) / slope)
-    # Sets final x-coordinate as (y2 - b) / m since y2 = mx2 + b
-    x2 = int((y2 - intercept) / slope)
-    return np.array([x1, y1, x2, y2])
+def filter_contours_find_centroids(contours, areas, y_cutoff):
+    centroids = []
+    filtered_contours = []
+    for idx,contour in enumerate(contours):        
+        # check the area
+        if areas[idx] > 100 and areas[idx] < 2000:
+            M = cv.moments(contour)
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])
+            # check that it is below some point because the lane lines are 
+            # in the bottom half of image
+            if cy > y_cutoff:                
+                centroids.append([cx, cy])
+                filtered_contours.append(contour)
+    return filtered_contours, centroids
 
-def visualize_lines(frame, lines):
-    # Creates an image filled with zero intensities with the same dimensions as the frame
-    lines_visualize = np.zeros_like(frame)
-    # Checks if any lines are detected
-    if lines is not None:
-        for x1, y1, x2, y2 in lines:
-            # Draws lines between two coordinates with green color and 5 thickness
-            cv.line(lines_visualize, (x1, y1), (x2, y2), (0, 255, 0), 5)
-    return lines_visualize
+def find_line_fit(centroids):
+    centroids_array = np.array(centroids)
+    m, b = np.polyfit(centroids_array[:,0], -1*centroids_array[:,1], 1)
+    return m,b
+    
+
+
+
+
 
 directory = "/home/simrun/ros2_ws/src/comprobo_road_navigation/sample_images/right/"
+frame_width = 1024
+frame_height = 768
 
 def main():
-    # ret = a boolean return value from getting the frame, frame = the current frame being projected in the video
+
     for image in os.listdir(directory):
         # Using cv2.imread() method
-        frame = cv.imread(directory + image )
-        canny = do_canny(frame)
-        # cv.imshow("canny", canny)
-        
-
-    # idea options:
-    # try out a color mask and rectangle detection
-
+        frame = cv.imread(directory + image)   
         # convert image to grayscale image
         gray_image = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        
+        # add guausian blur
+        blur = cv.GaussianBlur(gray_image, (5, 5), 0)        
         # convert the grayscale image to binary image
         ret,thresh = cv.threshold(gray_image,127,255,0)
-        
-        # calculate moments of binary image
-        M = cv.moments(thresh)
-        contours,hierarchy = cv.findContours(thresh, 1, 2)
-        filtered_contours = []
+        # find contours
+        contours,_ = cv.findContours(thresh, 1, 2)
         areas = []
         for contour in contours:
             area = cv.contourArea(contour)
             areas.append(area)
-            if area > 100 and area < 2000:
-                filtered_contours.append(contour)
 
+        # use wall as a way to mask image. finds the bounding box off 
+        # wall contour and uses that to mask image
+        y_cutoff = find_crop_region(contours, areas)
+
+        # alternatively just cut in half and use bottom half
+        # y_cutoff = int(frame_height/2)
+
+        # create mask
         mask = np.zeros(frame.shape[:2], dtype="uint8")
-        max_value = max(areas)
-        largest_contour = contours[areas.index(max_value)]
-        x,y,w,h = cv.boundingRect(largest_contour)
-        cv.rectangle(mask,(x,y),(x+w,y+h), 255, -1)
+        cv.rectangle(mask,(0,y_cutoff),(frame_width,frame_height), 255, -1)
         masked = cv.bitwise_and(frame, frame, mask=mask)
-        cv.imshow("Mask Applied to Image", masked)
+        
+        # find centroids
+        filtered_contours, centroids = filter_contours_find_centroids(contours, areas, y_cutoff)
 
-        # # cv.imshow("thres", thresh)
-        # cv.drawContours(frame, contours, -1, (0, 255, 0), 1)
-        # cv.imshow("contours", frame);
+        # find left or right
+        m,b = find_line_fit(centroids)
+        print(f'Slope: {m}')
+
+        # draw centroids
+        for centroid in centroids:
+            cv.circle(masked, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
+        # draw contours
+        cv.drawContours(masked, filtered_contours, -1, (0, 255, 0), 1)
+        cv.imshow("contours", masked)
         cv.waitKey(0)
         # create a custom mask for left and right and use that
     cv.destroyAllWindows()
