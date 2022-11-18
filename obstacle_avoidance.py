@@ -11,13 +11,13 @@ def do_canny(frame):
     canny = cv.Canny(blur, 50, 150)
     return canny
 
-def do_segment(frame):
+def do_segment(frame, x, y, w, h):
     # Since an image is a multi-directional array containing the relative intensities of each pixel in the image, we can use frame.shape to return a tuple: [number of rows, number of columns, number of channels] of the dimensions of the frame
     # frame.shape[0] give us the number of rows of pixels the frame has. Since height begins from 0 at the top, the y-coordinate of the bottom of the frame is its height
     height = frame.shape[0]
     # Creates a triangular polygon for the mask defined by three (x, y) coordinates
     polygons = np.array([
-                            [(0, height), (800, height), (380, 290)]
+                            [(x, y), (x+w, y), ()]
                         ])
     # Creates an image filled with zero intensities with the same dimensions as the frame
     mask = np.zeros_like(frame)
@@ -74,22 +74,51 @@ def visualize_lines(frame, lines):
             cv.line(lines_visualize, (x1, y1), (x2, y2), (0, 255, 0), 5)
     return lines_visualize
 
-directory = "/home/simrun/ros2_ws/src/comprobo_road_navigation/sample_images/right"
+directory = "/home/simrun/ros2_ws/src/comprobo_road_navigation/sample_images/right/"
 
 def main():
     # ret = a boolean return value from getting the frame, frame = the current frame being projected in the video
     for image in os.listdir(directory):
         # Using cv2.imread() method
-        frame = cv.imread(directory + '/' + image)
+        frame = cv.imread(directory + image )
         canny = do_canny(frame)
-        cv.imshow("canny", canny)
-        cv.waitKey(0)
+        # cv.imshow("canny", canny)
+        
 
     # idea options:
     # try out a color mask and rectangle detection
-    # create a custom mask for left and right and use that
-    # 
-    #
+
+        # convert image to grayscale image
+        gray_image = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        
+        # convert the grayscale image to binary image
+        ret,thresh = cv.threshold(gray_image,127,255,0)
+        
+        # calculate moments of binary image
+        M = cv.moments(thresh)
+        contours,hierarchy = cv.findContours(thresh, 1, 2)
+        filtered_contours = []
+        areas = []
+        for contour in contours:
+            area = cv.contourArea(contour)
+            areas.append(area)
+            if area > 100 and area < 2000:
+                filtered_contours.append(contour)
+
+        mask = np.zeros(frame.shape[:2], dtype="uint8")
+        max_value = max(areas)
+        largest_contour = contours[areas.index(max_value)]
+        x,y,w,h = cv.boundingRect(largest_contour)
+        cv.rectangle(mask,(x,y),(x+w,y+h), 255, -1)
+        masked = cv.bitwise_and(frame, frame, mask=mask)
+        cv.imshow("Mask Applied to Image", masked)
+
+        # # cv.imshow("thres", thresh)
+        # cv.drawContours(frame, contours, -1, (0, 255, 0), 1)
+        # cv.imshow("contours", frame);
+        cv.waitKey(0)
+        # create a custom mask for left and right and use that
+    cv.destroyAllWindows()
 
 
 if __name__ == "__main__":
