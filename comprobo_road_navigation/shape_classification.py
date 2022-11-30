@@ -107,6 +107,12 @@ class ShapeClassifier():
         vid.release()
         cv2.destroyAllWindows()
 
+    def get_contours(self, binary_image):
+        # Find contours and detect shape
+        cnts = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        return cnts
+
 def main(args=None):
     n = ShapeClassifier()
     n.run_tracker()
