@@ -25,7 +25,7 @@ def filter_contours_find_centroids(contours, areas, y_cutoff):
     filtered_contours = []
     for idx,contour in enumerate(contours):        
         # check the area
-        if areas[idx] > 100 and areas[idx] < 2000:
+        if areas[idx] > 500 and areas[idx] < 4000:
             M = cv.moments(contour)
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
@@ -37,16 +37,39 @@ def filter_contours_find_centroids(contours, areas, y_cutoff):
     return filtered_contours, centroids
 
 def find_line_fit(centroids):
-    centroids_array = np.array(centroids)
-    m, b = np.polyfit(centroids_array[:,0], -1*centroids_array[:,1], 1)
+    m, b = np.polyfit(centroids[:,0], -1*centroids[:,1], 1)
     return m,b
+
+def detect_outliers(centroids):
+    true_centroids = []
+    centroids_np = np.array(centroids)
+    Q1_x = np.percentile(centroids_np[:,0], 25, interpolation = 'midpoint')
+    Q3_x = np.percentile(centroids_np[:,0], 75, interpolation = 'midpoint')
+    Q1_y = np.percentile(centroids_np[:,1], 25, interpolation = 'midpoint')
+    Q3_y = np.percentile(centroids_np[:,1], 75, interpolation = 'midpoint')
+    IQR_x = Q3_x - Q1_x
+    IQR_y = Q3_y - Q1_y
+
+    for centroid in centroids:
+        if centroid[0] >= (Q3_x + 1.5*IQR_x) or \
+           centroid[0] <= (Q1_x - 1.5*IQR_x) or \
+           centroid[1] >= (Q3_y + 1.5*IQR_y) or \
+           centroid[1] <= (Q1_y - 1.5*IQR_y):
+           continue
+        else:
+            true_centroids.append(centroid)
+    return np.array(true_centroids)
+
+
+
+
     
 
 
 
 
 
-directory = "/home/simrun/ros2_ws/src/comprobo_road_navigation/sample_images/right/"
+directory = "/home/simrun/ros2_ws/images_nov29/left_lane/"
 frame_width = 1024
 frame_height = 768
 
@@ -70,10 +93,10 @@ def main():
 
         # use wall as a way to mask image. finds the bounding box off 
         # wall contour and uses that to mask image
-        y_cutoff = find_crop_region(contours, areas)
+        # y_cutoff = find_crop_region(contours, areas)
 
         # alternatively just cut in half and use bottom half
-        # y_cutoff = int(frame_height/2)
+        y_cutoff = int(frame_height/3)
 
         # create mask
         mask = np.zeros(frame.shape[:2], dtype="uint8")
@@ -83,10 +106,14 @@ def main():
         # find centroids
         filtered_contours, centroids = filter_contours_find_centroids(contours, areas, y_cutoff)
 
+        # detect outliers
+        # centroids = detect_outliers(unfiltered_centroids) # returns centroids as numpy array
         # find left or right
-        m,b = find_line_fit(centroids)
-        print(f'Slope: {m}')
-
+        # if bool(centroids.ndim > 1):
+        #     m,b = find_line_fit(centroids)
+        #     print(f'Slope: {m}')
+        # else:
+        #     print("Not enough points to find slope")
         # draw centroids
         for centroid in centroids:
             cv.circle(masked, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
