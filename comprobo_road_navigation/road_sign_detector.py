@@ -35,6 +35,34 @@ class RoadSignDetector(Node):
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
+    def set_red_lower_bound(self, val):
+        """ A callback function to handle the OpenCV slider to select the red lower bound """
+        self.red_lower_bound = val
+
+    def set_red_upper_bound(self, val):
+        """ A callback function to handle the OpenCV slider to select the red upper bound """
+        self.red_upper_bound = val
+
+    def set_green_lower_bound(self, val):
+        """ A callback function to handle the OpenCV slider to select the green lower bound """
+        self.green_lower_bound = val
+
+    def set_green_upper_bound(self, val):
+        """ A callback function to handle the OpenCV slider to select the green upper bound """
+        self.green_upper_bound = val
+
+    def set_blue_lower_bound(self, val):
+        """ A callback function to handle the OpenCV slider to select the blue lower bound """
+        self.blue_lower_bound = val
+
+    def set_blue_upper_bound(self, val):
+        """ A callback function to handle the OpenCV slider to select the blue upper bound """
+        self.blue_upper_bound = val
+
+    def set_shape_epsilon(self, val):
+        """ A callback function to handle the OpenCV slider to select the shape detection epsilon"""
+        self.shape_epsilon = val
+
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
             called cv_image for subsequent processing """
@@ -44,7 +72,17 @@ class RoadSignDetector(Node):
         """ This function takes care of calling the run_loop function repeatedly.
             We are using a separate thread to run the loop_wrapper to work around
             issues with single threaded executors in ROS2 """
-        cv2.namedWindow('video_window')
+        cv2.namedWindow('video_window', 0)
+        cv2.namedWindow('binary_window', 0)
+        cv2.resizeWindow('video_window', 800, 500)
+        cv2.resizeWindow('binary_window', 800, 500)
+        cv2.createTrackbar('red lower bound', 'binary_window', self.red_lower_bound, 255, self.set_red_lower_bound)
+        cv2.createTrackbar('red upper bound', 'binary_window', self.red_upper_bound, 255, self.set_red_upper_bound)
+        cv2.createTrackbar('green lower bound', 'binary_window', self.green_lower_bound, 255, self.set_green_lower_bound)
+        cv2.createTrackbar('green upper bound', 'binary_window', self.green_upper_bound, 255, self.set_green_upper_bound)
+        cv2.createTrackbar('blue lower bound', 'binary_window', self.blue_lower_bound, 255, self.set_blue_lower_bound)
+        cv2.createTrackbar('blue upper bound', 'binary_window', self.blue_upper_bound, 255, self.set_blue_upper_bound)
+        cv2.createTrackbar('shape epsilon', 'binary_window', self.shape_epsilon, 10, self.set_shape_epsilon)
         while True:
             self.run_loop()
             time.sleep(0.1)
@@ -53,7 +91,6 @@ class RoadSignDetector(Node):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
         if not self.cv_image is None:
             self.binary_image = cv2.inRange(self.cv_image, (self.blue_lower_bound,self.green_lower_bound,self.red_lower_bound), (self.blue_upper_bound,self.green_upper_bound,self.red_upper_bound))
-            print(self.cv_image.shape)
             cv2.imshow('video_window', self.cv_image)
             cv2.imshow('binary_window', self.binary_image)
             contours = self.shape_classifier.get_contours(self.binary_image)
