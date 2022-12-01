@@ -15,7 +15,7 @@ class LaneDetection():
     def __init__(self):
         #(hMin = 124 , sMin = 0, vMin = 169), (hMax = 143 , sMax = 255, vMax = 255)
         # (hMin = 0 , sMin = 44, vMin = 185), (hMax = 179 , sMax = 255, vMax = 255)
-        self.directory = "/home/simrun/ros2_ws/images_nov29/left_lane/"
+        self.directory = "/home/simrun/ros2_ws/images_nov29/right_lane/"
         self.frame_width = 1024
         self.frame_height = 768
         # Set minimum and maximum HSV values to display
@@ -91,12 +91,12 @@ class LaneDetection():
             # cv2.drawContours(frame, filtered_contours, -1, (0,255,0), 3)
             
             # detect outliers
-            true_centroids = self.detect_outliers(centroids)
+            # true_centroids = self.detect_outliers(centroids)
             # find slope
-            slope = self.find_line_fit(true_centroids)
+            slope = self.find_line_fit(np.array(centroids))
             print(f'Slope: {slope}')
             # draw centroids
-            for centroid in true_centroids:
+            for centroid in centroids:
                 cv2.circle(frame, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
             cv2.imshow('frame with contours', frame)  # Display the resulting frame
             cv2.waitKey(0) 
