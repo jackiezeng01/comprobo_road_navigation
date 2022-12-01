@@ -63,9 +63,6 @@ def detect_outliers(centroids):
 
 
 
-    
-
-
 
 
 
