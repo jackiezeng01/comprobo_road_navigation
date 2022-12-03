@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import heapq as hq
 from itertools import permutations
 
 map = [1, 1, 1, 1, 1, 0, 
@@ -43,6 +44,7 @@ def calculate_heur(start_node, end_node):
     
 def node_to_node(start_node, end_node, graph):
     path = []
+    path_node = None
 
     if start_node == end_node:
         return None
@@ -50,47 +52,57 @@ def node_to_node(start_node, end_node, graph):
     nx.set_node_attributes(graph, np.Inf, 'dist')   # set all the node attributes to infinite distance 
     nx.set_node_attributes(graph, {start_node: 0}, 'dist')  # set start node dist to 0 so we choose it first 
     nx.set_node_attributes(graph, None, 'heur')
+    nx.set_node_attributes(graph, None, 'est_dist')
     nx.set_node_attributes(graph, None, 'parent')
 
-    open = {start_node}   # make a list of all the nodes to visit
+    open_nodes = [start_node]   # make a list of all the nodes to visit
 
-    closed = {}
-    while open:
+    closed = set()
+    while open_nodes:
         #open = sorted(open, key=lambda x: calculate_dist(x))    # sort the nodes by estimated distance to the end 
-        curr_node = open.pop(0)
-        if curr_node == end_node: 
+        if path_node is not None:
+            break 
             # we're done
+        
+        curr_node = open_nodes.pop(0)
+        if curr_node == end_node:
             path.append(curr_node)
+            path_node = curr_node
             break
-        if curr_node in closed:
-            continue
-        estimated_dist = calculate_heur(curr_node, end_node)
-        #nx.set_node_attributes(graph, {curr_node: estimated_dist}, 'dist')   # set all the node attributes to infinite distance 
-
-        # we want to check each adjacent node 
+        
         adjacent_nodes = graph.edges(curr_node)
-        exact_dists = nx.get_node_attributes(graph, 'dist') # pre fetch the exact distance for each node so we have it handy
-        new_dist = exact_dists[curr_node] + 1      # cost is 1 to each adjacent node so dist is current dist + 1 for all adjacent nodes
+        curr_node_dist = graph.nodes[curr_node]['dist']
+        next_node_dist = curr_node_dist + 1 
         for edge in adjacent_nodes:
             next_node = edge[1]
-            if next_node not in open:   # check if we've seen this node before
-                heur = calculate_heur(next_node, end_node)  # if not, calculate its approximate distance to the end
-                nx.set_node_attributes(graph, {next_node: heur}, 'heur')
-                nx.set_node_attributes(graph, {next_node: new_dist}, 'dist')
-                nx.set_node_attributes(graph, {next_node: curr_node}, 'parent')
-                # then add it to the nodes we still need to visit
-                open.add(next_node)
-            # if we've already seen it, check if it's a better path 
-            if next_node in open: 
-                if new_dist < exact_dists[next_node]:
-                    nx.set_node_attributes(graph, {next_node: curr_node}, 'parent')
-                    nx.set_node_attributes(graph, {next_node: new_dist}, 'dist')
-    parents = nx.get_node_attributes(graph, 'parent')
-    path_node = end_node
-    while parents[path_node] != None:
-        path.append(parents[path_node])
-        path_node = parents[path_node]
+            if next_node not in closed:
+                graph.nodes[next_node]['parent'] = curr_node
+                if next_node == end_node: 
+                    path.append(next_node)
+                    path_node = next_node
+                    break
+
+                if graph.nodes[next_node]['dist'] > next_node_dist:
+                    est_dist = calculate_heur(next_node, end_node)
+                    graph.nodes[next_node]['heur'] = est_dist
+                    graph.nodes[next_node]['est_dist'] = next_node_dist + est_dist
+                    graph.nodes[next_node]['dist'] = next_node_dist
+
+                if next_node not in open_nodes:
+                    if next_node not in closed:
+                        open_nodes.append(next_node)
+
+        closed.add(curr_node)
+        open_nodes.sort(key=lambda x: graph.nodes[x]['est_dist'])
+
+    if path_node is None:
+        print("No path found")
+        return
+    while graph.nodes[path_node]['parent'] is not None:
+        next_node = graph.nodes[path_node]['parent']
+        path.append(next_node)
+        path_node = next_node
     return path[::-1]
 
 graph = map_to_graph(map, 6, 7)
-print(node_to_node((0, 0), (1, 0), graph))
+print(node_to_node((0, 0), (5, 6), graph))
