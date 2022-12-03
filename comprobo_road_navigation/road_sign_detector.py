@@ -25,13 +25,13 @@ class RoadSignDetector(Node):
         self.create_subscription(Image, image_topic, self.process_image, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
         self.shape_classifier = ShapeClassifier()
-        self.red_lower_bound = 180
-        self.red_upper_bound = 255
-        self.green_lower_bound = 28
-        self.green_upper_bound = 100
-        self.blue_lower_bound = 115
-        self.blue_upper_bound = 250
-        self.shape_epsilon = 2
+        self.red_lower_bound = 0
+        self.red_upper_bound = 160
+        self.green_lower_bound = 127
+        self.green_upper_bound = 225
+        self.blue_lower_bound = 0
+        self.blue_upper_bound = 80
+        self.shape_epsilon = 4
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
@@ -68,6 +68,43 @@ class RoadSignDetector(Node):
             called cv_image for subsequent processing """
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
+    def detect_shape(self, c):
+        # Compute perimeter of contour and perform contour approximation
+        sign = ""
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, self.shape_epsilon/100 * peri, True)
+        num_edges = len(approx)
+        if num_edges == 3: # Triangle
+            sign = f"Yield {num_edges}"
+        elif num_edges == 4: # Square or rectangle
+            sign = f"Traffic Light Ahead {num_edges}"
+        elif num_edges >= 5 and num_edges <= 8:
+            sign = f"Stop {num_edges}"
+        # Otherwise assume as circle or oval
+        else:
+            sign = f"Do Not Enter {num_edges}"
+        return sign
+        
+    def get_contours(self, binary_image):
+        # Find contours and detect shape
+        cnts = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        return cnts
+
+    def id_and_draw_shapes(self, frame, cnts):
+        for c in cnts:
+            # Identify shape
+            if cv2.contourArea(c) > 35:
+                shape = self.detect_shape(c)
+                # Find centroid and label shape name
+                M = cv2.moments(c)
+                if M["m00"] != 0:
+                    cX = int(M["m10"] / M["m00"])
+                    cY = int(M["m01"] / M["m00"])
+                    cv2.putText(frame, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,255,12), 2)
+        cv2.drawContours(frame, cnts, -1, (0,255,0), 3)
+
+    
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
             We are using a separate thread to run the loop_wrapper to work around
@@ -84,27 +121,17 @@ class RoadSignDetector(Node):
         cv2.createTrackbar('blue upper bound', 'binary_window', self.blue_upper_bound, 255, self.set_blue_upper_bound)
         cv2.createTrackbar('shape epsilon', 'binary_window', self.shape_epsilon, 10, self.set_shape_epsilon)
         while True:
+            self.binary_image = cv2.inRange(self.cv_image, (self.blue_lower_bound,self.green_lower_bound,self.red_lower_bound), (self.blue_upper_bound,self.green_upper_bound,self.red_upper_bound))
+            contours = self.shape_classifier.get_contours(self.binary_image)
+            self.id_and_draw_shapes(self.binary_image, contours)
             self.run_loop()
             time.sleep(0.1)
 
     def run_loop(self):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
         if not self.cv_image is None:
-            self.binary_image = cv2.inRange(self.cv_image, (self.blue_lower_bound,self.green_lower_bound,self.red_lower_bound), (self.blue_upper_bound,self.green_upper_bound,self.red_upper_bound))
             cv2.imshow('video_window', self.cv_image)
             cv2.imshow('binary_window', self.binary_image)
-            contours = self.shape_classifier.get_contours(self.binary_image)
-            for c in contours:
-                # Identify shape
-                if cv2.contourArea(c) > 35:
-                    shape = self.shape_classifier.detect_shape(c)
-                    # Find centroid and label shape name
-                    M = cv2.moments(c)
-                    if M["m00"] != 0:
-                        cX = int(M["m10"] / M["m00"])
-                        cY = int(M["m01"] / M["m00"])
-                        cv2.putText(self.binary_image, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 2)
-            cv2.drawContours(self.binary_image, contours, -1, (0,255,0), 3)
             # if hasattr(self, 'image_info_window'):
             #     cv2.imshow('image_info', self.image_info_window)
             cv2.waitKey(5)

@@ -1,102 +1,122 @@
-import cv2 as cv
+import cv2 
 import numpy as np
 import os
+from cv_bridge import CvBridge
 
-
-def find_contours(frame):
-        # convert image to grayscale image
-    gray_image = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+class ObstacleAvoidance():
+    '''
+    Obstacle Detection
+    '''
+    def __init__(self, sub, pub):
+        self.directory = "/home/simrun/ros2_ws/images_nov29/right_lane/"
+        self.frame_width = 1024
+        self.frame_height = 768
+        # Set minimum and maximum HSV values to display
+        self.lower = np.array([0, 44, 185])
+        self.upper = np.array([179, 255, 255])
+        self.bridge = CvBridge()   
+        # self.image_sub = image_sub
+        self.vel_pub = pub
+        self.sub = sub
+        self.cv_image = None
     
-    # convert the grayscale image to binary image
-    ret,thresh = cv.threshold(gray_image,127,255,0)
-    
-    # calculate moments of binary image
-    M = cv.moments(thresh)
-    contours,hierarchy = cv.findContours(thresh, 1, 2)
+    def process_image(self, msg):
+        """ Process image messages from ROS and stash them in an attribute
+            called cv_image for subsequent processing """
+        self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
-def find_crop_region(contours, areas):
-    max_value = max(areas)
-    largest_contour = contours[areas.index(max_value)]
-    _,y,_,h = cv.boundingRect(largest_contour)
-    return y+h
-
-def filter_contours_find_centroids(contours, areas, y_cutoff):
-    centroids = []
-    filtered_contours = []
-    for idx,contour in enumerate(contours):        
-        # check the area
-        if areas[idx] > 100 and areas[idx] < 2000:
-            M = cv.moments(contour)
-            cx = int(M['m10']/M['m00'])
-            cy = int(M['m01']/M['m00'])
-            # check that it is below some point because the lane lines are 
-            # in the bottom half of image
-            if cy > y_cutoff:                
+    def filter_contours_find_centroids(self, contours, areas):
+        centroids = []
+        filtered_contours = []
+        for idx,contour in enumerate(contours):        
+            # check the area
+            if areas[idx] > 200 and areas[idx] < 4000:
+                M = cv2.moments(contour)
+                cx = int(M['m10']/M['m00'])
+                cy = int(M['m01']/M['m00'])
+                # check that it is below some point because the lane lines are 
+                # in the bottom half of image               
                 centroids.append([cx, cy])
                 filtered_contours.append(contour)
-    return filtered_contours, centroids
+        return filtered_contours, centroids
 
-def find_line_fit(centroids):
-    centroids_array = np.array(centroids)
-    m, b = np.polyfit(centroids_array[:,0], -1*centroids_array[:,1], 1)
-    return m,b
-    
-
-
-
-
-
-directory = "/home/simrun/ros2_ws/src/comprobo_road_navigation/sample_images/right/"
-frame_width = 1024
-frame_height = 768
-
-def main():
-
-    for image in os.listdir(directory):
-        # Using cv2.imread() method
-        frame = cv.imread(directory + image)   
-        # convert image to grayscale image
-        gray_image = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        # add guausian blur
-        blur = cv.GaussianBlur(gray_image, (5, 5), 0)        
-        # convert the grayscale image to binary image
-        ret,thresh = cv.threshold(gray_image,127,255,0)
-        # find contours
-        contours,_ = cv.findContours(thresh, 1, 2)
+    def find_areas(self, contours):
         areas = []
         for contour in contours:
-            area = cv.contourArea(contour)
+            area = cv2.contourArea(contour)
             areas.append(area)
+        return areas
 
-        # use wall as a way to mask image. finds the bounding box off 
-        # wall contour and uses that to mask image
-        y_cutoff = find_crop_region(contours, areas)
+    def find_line_fit(self, centroids):
+        m, _ = np.polyfit(centroids[:,0], -1*centroids[:,1], 1)
+        return m
 
-        # alternatively just cut in half and use bottom half
-        # y_cutoff = int(frame_height/2)
+    def detect_outliers(self, centroids):
+        true_centroids = []
+        centroids_np = np.array(centroids)
+        Q1_x = np.percentile(centroids_np[:,0], 25, interpolation = 'midpoint')
+        Q3_x = np.percentile(centroids_np[:,0], 75, interpolation = 'midpoint')
+        Q1_y = np.percentile(centroids_np[:,1], 25, interpolation = 'midpoint')
+        Q3_y = np.percentile(centroids_np[:,1], 75, interpolation = 'midpoint')
+        IQR_x = Q3_x - Q1_x
+        IQR_y = Q3_y - Q1_y
 
-        # create mask
-        mask = np.zeros(frame.shape[:2], dtype="uint8")
-        cv.rectangle(mask,(0,y_cutoff),(frame_width,frame_height), 255, -1)
-        masked = cv.bitwise_and(frame, frame, mask=mask)
-        
-        # find centroids
-        filtered_contours, centroids = filter_contours_find_centroids(contours, areas, y_cutoff)
-
-        # find left or right
-        m,b = find_line_fit(centroids)
-        print(f'Slope: {m}')
-
-        # draw centroids
         for centroid in centroids:
-            cv.circle(masked, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
-        # draw contours
-        cv.drawContours(masked, filtered_contours, -1, (0, 255, 0), 1)
-        cv.imshow("contours", masked)
-        cv.waitKey(0)
-        # create a custom mask for left and right and use that
-    cv.destroyAllWindows()
+            if centroid[0] >= (Q3_x + 1.5*IQR_x) or \
+            centroid[0] <= (Q1_x - 1.5*IQR_x) or \
+            centroid[1] >= (Q3_y + 1.5*IQR_y) or \
+            centroid[1] <= (Q1_y - 1.5*IQR_y):
+                continue
+        else:
+                true_centroids.append(centroid)
+        return np.array(true_centroids)
+
+    def detect_obstacles(self):
+        pass
 
 
-if __name__ == "__main__":
-   main()
+    def find_lane_centers(self, image):
+        # for image in os.listdir(self.directory):
+            # frame = cv2.imread(self.directory + image) 
+        self.cv_image = image
+        print(f'cv_image{self.cv_image}')
+        if self.cv_image is not None:
+            print("inside if")
+            frame = self.cv_image
+            # Convert to HSV format and color threshold
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv, self.lower, self.upper)
+            gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # making it gray so we can find contours
+            # Applying color mask
+            result = cv2.bitwise_and(gray_image, gray_image, mask=mask) 
+            cv2.imshow('masked image', result)
+            
+            # Find contours and detect shape
+            contours,_ = cv2.findContours(result, 1, 2)
+            
+            # find centroids and potentially filter contours by area
+            areas = self.find_areas(contours)        
+            filtered_contours, centroids = self.filter_contours_find_centroids(contours, areas)
+            
+            
+            # detect outliers
+            # true_centroids = self.detect_outliers(centroids)
+            # find slope
+            slope = self.find_line_fit(np.array(centroids))
+            print(f'Slope: {slope}')
+            # draw centroids
+            for centroid in centroids:
+                cv2.circle(frame, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
+            cv2.imshow('frame with contours', frame)  # Display the resulting frame
+            cv2.waitKey(5)
+
+
+        cv2.destroyAllWindows()
+
+
+# def main(args=None):
+#     n = ObstacleAvoidance()
+#     n.find_lane_centers()
+
+# if __name__ == '__main__':
+#     main()

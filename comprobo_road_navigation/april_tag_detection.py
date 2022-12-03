@@ -5,7 +5,7 @@ import apriltag
 # vid = cv2.VideoCapture(0)
 # ret, frame = vid.read()
 # frame = cv2.imread('sample_images/apriltags_30mm.png')
-frame = cv2.imread('sample_images/tagsampler.png')
+frame = cv2.imread('/home/melody/ros2_ws/src/comprobo_road_navigation/sample_images/tagsampler.png')
 
 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 options = apriltag.DetectorOptions(families="tag36h11")
@@ -31,7 +31,8 @@ for r in results:
 	cv2.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
 	# draw the tag family on the image
 	tagFamily = r.tag_family.decode("utf-8")
-	cv2.putText(frame, tagFamily, (ptA[0], ptA[1] - 15),
+	tagID = r.tag_id
+	cv2.putText(frame, str(tagID), (ptA[0], ptA[1] - 15),
 		cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 # show the output image after AprilTag detection
 cv2.imshow("Video frame", frame)

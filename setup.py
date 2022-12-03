@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'road_sign_detector = comprobo_road_navigation.road_sign_detector:main'
+            'road_sign_detector = comprobo_road_navigation.road_sign_detector:main',
+            'neato_car = comprobo_road_navigation.neato_car:main'
         ],
     },
 )
