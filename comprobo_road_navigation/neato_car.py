@@ -3,12 +3,13 @@ from threading import Thread
 from rclpy.node import Node
 import time
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import LaserScan
 from copy import deepcopy
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from geometry_msgs.msg import Twist, Vector3
-from comprobo_road_navigation.shape_classification import ShapeClassifier
+# from comprobo_road_navigation.shape_classification import ShapeClassifier
 from comprobo_road_navigation.obstacle_avoidance import ObstacleAvoidance
 
 class NeatoCar(Node):
@@ -22,10 +23,13 @@ class NeatoCar(Node):
         super().__init__('ball_tracker')
         self.cv_image = None                        # the latest image from the camera
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
-        self.sub = self.create_subscription(Image, image_topic, self.process_image, 10)
+        self.sub_image = self.create_subscription(Image, image_topic, self.process_image, 10)
+        self.sub_scan = self.create_subscription(LaserScan, 'scan', self.process_laserscan, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
-        self.shape_classifier = ShapeClassifier()
-        self.obstacle_avoidance = ObstacleAvoidance(self.cv_image, self.pub)
+        self.change_lanes_flag = False
+        self.ranges = []
+        # self.shape_classifier = ShapeClassifier()
+        self.obstacle_avoidance = ObstacleAvoidance(self.pub)
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
@@ -35,17 +39,39 @@ class NeatoCar(Node):
             called cv_image for subsequent processing """
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
+    def process_laserscan(self, msg):
+        self.ranges = msg.ranges
+ 
+
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
             We are using a separate thread to run the loop_wrapper to work around
             issues with single threaded executors in ROS2 """
+        # cv2.namedWindow('frame_with_centroids', 0)
+        # cv2.resizeWindow('frame_with_centroids', 800, 500)
         while True:
             self.run_loop()
-            time.sleep(0.1)
+            time.sleep(1)
+        # cv2.destroyAllWindows()
+
 
     def run_loop(self):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
-        self.obstacle_avoidance.find_lane_centers(self.cv_image)
+        velocity = Twist()
+        velocity.linear.x = float(0.1)
+        if not self.change_lanes_flag:
+            self.turn_speed = 0
+            self.turn_speed, self.change_lanes_flag = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.change_lanes_flag)
+        if self.change_lanes_flag:
+            velocity.angular.z = float(self.turn_speed)
+        print(f'Linear speed{velocity.linear.x}, Angular speed: {velocity.angular.z}')
+        self.pub.publish(velocity)
+            
+
+        # # self.obstacle_avoidance.find_lane_centers(self.cv_image)
+        # if self.obstacle_avoidance.cv_image is not None:
+        #     cv2.imshow('frame_with_centroids', self.obstacle_avoidance.cv_image)
+        #     cv2.waitKey(5)
 
 if __name__ == '__main__':
     node = NeatoCar("/camera/image_raw")
