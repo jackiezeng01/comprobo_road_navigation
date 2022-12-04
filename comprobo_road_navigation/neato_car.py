@@ -2,11 +2,13 @@ import rclpy
 from threading import Thread
 from rclpy.node import Node
 import time
+import math
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import LaserScan
 from copy import deepcopy
 from cv_bridge import CvBridge
 import cv2
+import comprobo_road_navigation.helper_functions as helper_functions
 import numpy as np
 from geometry_msgs.msg import Twist, Vector3
 # from comprobo_road_navigation.shape_classification import ShapeClassifier
@@ -28,11 +30,15 @@ class NeatoCar(Node):
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
         self.change_lanes_flag = False
         self.ranges = []
+        self.rotation_speed = 0.3
         # self.shape_classifier = ShapeClassifier()
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
+    def get_Odom(self, msg):
+        self.position = msg.pose.pose.position
+        self.orientation = helper_functions.euler_from_quaternion(msg.pose.pose.orientation)
 
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
@@ -54,6 +60,14 @@ class NeatoCar(Node):
             time.sleep(1)
         # cv2.destroyAllWindows()
 
+    def turn_ninety_deg(self):
+        start_orientation = self.orientation
+        # if we've turned 90 degrees from where we started, stop the robot
+        if abs(start_orientation.z - self.orientation.z) >= math.pi/2:
+            return Vector3(x=0.0, y=0.0, z=0.0)
+        # otherwise, keep turning
+        else: 
+            return Vector3(x=0.0, y=0.0, z=self.rotation_speed)
 
     def run_loop(self):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
