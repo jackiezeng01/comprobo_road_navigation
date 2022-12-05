@@ -1,26 +1,29 @@
 import cv2 
 import numpy as np
 import os
+from cv_bridge import CvBridge
 
-class LaneDetection():
+class ObstacleAvoidance():
     '''
-    This program can be used for selecting a color mask to detect traffic signs
-    and selecting an epsilon value for polygon classification (to differentiate between signs).
-    Signs that we'll include in this project:
-    * Yield (Triangle)
-    * Traffic Light Ahead (Square)
-    * Stop (Hexagon)
-    * Do Not Enter (Circle)
+    Obstacle Detection
     '''
-    def __init__(self):
-        #(hMin = 124 , sMin = 0, vMin = 169), (hMax = 143 , sMax = 255, vMax = 255)
-        # (hMin = 0 , sMin = 44, vMin = 185), (hMax = 179 , sMax = 255, vMax = 255)
+    def __init__(self, pub):
         self.directory = "/home/simrun/ros2_ws/images_nov29/right_lane/"
         self.frame_width = 1024
         self.frame_height = 768
         # Set minimum and maximum HSV values to display
         self.lower = np.array([0, 44, 185])
         self.upper = np.array([179, 255, 255])
+        self.bridge = CvBridge()   
+        # self.image_sub = image_sub
+        self.vel_pub = pub
+        self.cv_image = None
+        self.direction = 0
+    
+    def process_image(self, msg):
+        """ Process image messages from ROS and stash them in an attribute
+            called cv_image for subsequent processing """
+        self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
     def filter_contours_find_centroids(self, contours, areas):
         centroids = []
@@ -68,17 +71,35 @@ class LaneDetection():
                 true_centroids.append(centroid)
         return np.array(true_centroids)
 
+    def detect_obstacles(self, ranges):
+        dist_threshold = 0.5
+        point_threshold = 20
+        ob_points = 0
+        obstacle = False
+        if len(ranges):
+            for angle in range(-15,15):
+                idx = (angle + 360) % 360
+                dist = ranges[idx]
+                # print(f'Angle: {angle}, Distance: {dist}')
+                if dist < dist_threshold:
+                    ob_points += 1
+                    print(f'Num points: {ob_points}')
+            if ob_points > point_threshold:
+                obstacle = True
+        return obstacle
 
-    def find_lane_centers(self):
-        for image in os.listdir(self.directory):
-            frame = cv2.imread(self.directory + image) 
+
+    def find_slope(self, image):
+        self.cv_image = image
+        if self.cv_image is not None:
+            # frame = self.cv_image
             # Convert to HSV format and color threshold
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            hsv = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
             mask = cv2.inRange(hsv, self.lower, self.upper)
-            gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # making it gray so we can find contours
+            gray_image = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2GRAY) # making it gray so we can find contours
             # Applying color mask
             result = cv2.bitwise_and(gray_image, gray_image, mask=mask) 
-            cv2.imshow('masked image', result)
+            # cv2.imshow('masked image', result)
             
             # Find contours and detect shape
             contours,_ = cv2.findContours(result, 1, 2)
@@ -86,27 +107,50 @@ class LaneDetection():
             # find centroids and potentially filter contours by area
             areas = self.find_areas(contours)        
             filtered_contours, centroids = self.filter_contours_find_centroids(contours, areas)
-            
-            # # draw contours
-            # cv2.drawContours(frame, filtered_contours, -1, (0,255,0), 3)
-            
+
             # detect outliers
             # true_centroids = self.detect_outliers(centroids)
             # find slope
-            slope = self.find_line_fit(np.array(centroids))
-            print(f'Slope: {slope}')
+            slope = 0
+            if len(centroids)>= 2:
+                slope = self.find_line_fit(np.array(centroids))
+                print(f'Slope: {slope}')
+
             # draw centroids
             for centroid in centroids:
-                cv2.circle(frame, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
-            cv2.imshow('frame with contours', frame)  # Display the resulting frame
-            cv2.waitKey(0) 
+                cv2.circle(self.cv_image, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
 
-        cv2.destroyAllWindows()
+            return slope
+
+    def find_turn_direction(self, slope):
+        if slope > 0:
+            return -1 # left ( direction of angular speed)
+        else:
+            return 1 # right
 
 
-def main(args=None):
-    n = LaneDetection()
-    n.find_lane_centers()
+    def obstacle_behaviour(self, ranges, image, turn_flag):
+        if turn_flag:
+           slope = self.find_slope(image)
+           if np.sign(self.direction) == np.sign(slope):
+                turn_flag = False
+                return 0, turn_flag
+        else:
+            obstacle_detected = self.detect_obstacles(ranges)
+            if obstacle_detected:
+                print('obstacle detected')
+                slope = self.find_slope(image)
+                self.direction = self.find_turn_direction(slope)
+                return self.direction * 0.3, True
+            else:    
+                return 0, False
+        
 
-if __name__ == '__main__':
-    main()
+        
+
+# def main(args=None):
+#     n = ObstacleAvoidance()
+#     n.find_lane_centers()
+
+# if __name__ == '__main__':
+#     main()

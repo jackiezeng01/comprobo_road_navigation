@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'road_sign_detector = comprobo_road_navigation.road_sign_detector:main',
+            'neato_car = comprobo_road_navigation.neato_car:main',
             'april_tag_detector = comprobo_road_navigation.april_tag_detector:main'
         ],
     },
