@@ -8,7 +8,6 @@ from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from geometry_msgs.msg import Twist, Vector3
-from comprobo_road_navigation.shape_classification import ShapeClassifier
 
 class RoadSignDetector(Node):
     """ The BallTracker is a Python object that encompasses a ROS node 
@@ -24,7 +23,6 @@ class RoadSignDetector(Node):
 
         self.create_subscription(Image, image_topic, self.process_image, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
-        self.shape_classifier = ShapeClassifier()
         self.red_lower_bound = 0
         self.red_upper_bound = 160
         self.green_lower_bound = 127
@@ -122,7 +120,7 @@ class RoadSignDetector(Node):
         cv2.createTrackbar('shape epsilon', 'binary_window', self.shape_epsilon, 10, self.set_shape_epsilon)
         while True:
             self.binary_image = cv2.inRange(self.cv_image, (self.blue_lower_bound,self.green_lower_bound,self.red_lower_bound), (self.blue_upper_bound,self.green_upper_bound,self.red_upper_bound))
-            contours = self.shape_classifier.get_contours(self.binary_image)
+            contours = self.get_contours(self.binary_image)
             self.id_and_draw_shapes(self.binary_image, contours)
             self.run_loop()
             time.sleep(0.1)
