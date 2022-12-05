@@ -10,7 +10,7 @@ from cv_bridge import CvBridge
 import cv2
 import comprobo_road_navigation.helper_functions as helper_functions
 import numpy as np
-from geometry_msgs.msg import Twist, Vector3
+from geometry_msgs.msg import Twist, Vector3, Quaternion
 # from comprobo_road_navigation.shape_classification import ShapeClassifier
 from comprobo_road_navigation.obstacle_avoidance import ObstacleAvoidance
 
@@ -30,9 +30,12 @@ class NeatoCar(Node):
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
         self.change_lanes_flag = False
         self.ranges = []
+        # rotation stuff
+        self.start_orientation = None
         self.rotation_speed = 0.3
         # self.shape_classifier = ShapeClassifier()
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
+        self.turning_flag = 0
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
@@ -61,11 +64,11 @@ class NeatoCar(Node):
         # cv2.destroyAllWindows()
 
     def turn_ninety_deg(self):
-        start_orientation = self.orientation
-        # if we've turned 90 degrees from where we started, stop the robot
-        if abs(start_orientation.z - self.orientation.z) >= math.pi/2:
+        # set rotation speed 
+        if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+            self.turning_flag = 0
+            self.start_orientation = None
             return Vector3(x=0.0, y=0.0, z=0.0)
-        # otherwise, keep turning
         else: 
             return Vector3(x=0.0, y=0.0, z=self.rotation_speed)
 
@@ -73,11 +76,19 @@ class NeatoCar(Node):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
         velocity = Twist()
         velocity.linear.x = float(0.1)
+        # if the turning flag is set to 1, the robot will turn until it reaches 90 degrees
+        if self.turning_flag:
+            if self.start_orientation is None:
+                self.start_orientation = self.orientation
+            velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
+            velocity.angular = self.turn_ninety_deg()
         if not self.change_lanes_flag:
             self.turn_speed = 0
             self.turn_speed, self.change_lanes_flag = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.change_lanes_flag)
         if self.change_lanes_flag:
             velocity.angular.z = float(self.turn_speed)
+
+
         print(f'Linear speed{velocity.linear.x}, Angular speed: {velocity.angular.z}')
         self.pub.publish(velocity)
             
