@@ -17,6 +17,7 @@ import cv2
 import matplotlib.pyplot as plt
 import math
 import os
+import pandas as pd
 import time
 import numpy as np
 from rclpy.node import Node
@@ -27,7 +28,7 @@ from copy import deepcopy
 from geometry_msgs.msg import Twist, Vector3
 from scipy.stats import linregress
 import rclpy
-from helper_functions import Point, Line, HoughLineDetection
+from helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion
 
 class Lane_Detector(Node):
     """ Finds the lanes in the image. """
@@ -47,7 +48,7 @@ class Lane_Detector(Node):
         self.lin_speed = 0.1
         
         self.reset_lines_detected()
-        self.calibrate_mask = True
+        self.calibrate_mask = False
 
         self.create_subscription(Image, image_topic, self.process_image, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
@@ -66,12 +67,12 @@ class Lane_Detector(Node):
         """ Process image messages from ROS and stash them in an attribute
             called cv_image for subsequent processing """
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-        # self.img_shape = self.cv_image.shape
+        self.img_shape = self.cv_image.shape
         self.reset_lines_detected()
 
     def get_Odom(self, msg):
         self.position = msg.pose.pose.position
-        self.orientation = helper_functions.euler_from_quaternion(msg.pose.pose.orientation)
+        self.orientation = euler_from_quaternion(msg.pose.pose.orientation)
 
     def calc_lane_lines(self, lines):
         """ 
@@ -93,14 +94,19 @@ class Lane_Detector(Node):
                 left.append((line.slope, line.y_intercept))
             else:
                 right.append((line.slope, line.y_intercept))
-        # Averages out all the values for left and right into a single slope and y-intercept value for each line
-        left_avg = np.average(left, axis = 0)
-        right_avg = np.average(right, axis = 0)
-        horizontal_avg = np.average(horizontal, axis = 0)
-        # Caculate left and right lines for the lanes
-        self.left = self.line_from_params(left_avg)
-        self.right = self.line_from_params(right_avg)
-        self.horizontal = self.line_from_params(horizontal_avg)
+
+        if left != []:
+            # Averages out all the values for left and right into a single slope and y-intercept value for each line
+            left_avg = np.average(left, axis = 0)
+            self.left = self.line_from_params(left_avg)
+        if right != []:
+            right_avg = np.average(right, axis = 0)
+            self.right = self.line_from_params(right_avg)
+        if horizontal != []:
+            horizontal_avg = np.average(horizontal, axis = 0)
+            print("horizontal avg:", horizontal_avg)
+            self.horizontal = self.line_from_params(horizontal_avg)
+
 
     def calc_lane_intersection(self):
         ''' Given the left and right lanes, figure out where the center of the lanes is.
@@ -123,11 +129,11 @@ class Lane_Detector(Node):
     def calc_road_center(self):
         # Intersection point of the two lanes 
         self.lane_center_pt = self.calc_lane_intersection()
-        
         avg_slope = np.average(self.left.slope + self.right.slope)
         avg_intercept = np.average(self.left.y_intercept + self.right.y_intercept)
+        params = avg_slope, avg_intercept
         # Calculate center line
-        self.lane_center_line = self.line_from_params((avg_slope, avg_intercept), self.lane_center_pt)
+        self.lane_center_line = self.line_from_params(params, self.lane_center_pt)
 
     def line_from_params(self, params:list, pt:Point = None) -> Line:
         ''' Calculate the two points that make up a line segment from the inputs. If just the default params are given, the line is calculated with hard coded y values that are convenient for visualization purposes. If a point on the line is given, a short line segment centered around the point will be retruned. 
@@ -135,8 +141,6 @@ class Lane_Detector(Node):
             params: slope, y intercept
             pt: point the line passes through
         '''
-        if params == None:
-            return None
         m, b = params
         if pt != None:
             # line length
@@ -214,15 +218,16 @@ class Lane_Detector(Node):
         self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
 
     def run_lane_detector(self):
-        lines = self.hough.do_hough_line_transform(self.cv_image)
-        self.calc_lane_lines(lines)
-        # only find intersection if we see two lines lol
-        if self.left and self.right:
-            self.calc_road_center()
-            print("center_pt", self.lane_center_pt)
-            print(self.lane_center_line.slope)
-            print(self.lane_center_line)
-        self.visualize_lanes()
+        if self.cv_image.all != None:
+            lines = self.hough.do_hough_line_transform(self.cv_image)
+            self.calc_lane_lines(lines)
+            # only find intersection if we see two lines lol
+            if self.left and self.right:
+                self.calc_road_center()
+                # print("center_pt", self.lane_center_pt)
+                # print(self.lane_center_line.slope)
+                # print(self.lane_center_line)
+            self.visualize_lanes()
 
     def drive(self):
         """ This function determines how the robot will react and drive.        
@@ -240,7 +245,7 @@ class Lane_Detector(Node):
         cv2.resizeWindow('video_window', 800, 500)
         while True:
             self.run_lane_detector()
-            self.turn_ninety_deg()
+            # self.drive()
             self.run_loop()
             time.sleep(0.1)
 

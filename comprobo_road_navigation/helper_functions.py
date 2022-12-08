@@ -112,7 +112,7 @@ class HoughLineDetection:
         polygons = np.array(
             [[(0, height), (1024, height), (607, 307), (400, 300)]])
         # Creates mask with only the area within the polygon filled with values of 1 and the other areas filled in with 0
-        mask = np.zeros_like(self, img)
+        mask = np.zeros_like(img)
         cv2.fillPoly(mask, polygons, 255)
         # Filter for segment of the image that is within the mask.
         segment = cv2.bitwise_and(img, mask)
