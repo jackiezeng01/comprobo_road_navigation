@@ -39,11 +39,7 @@ class Lane_Detector(Node):
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
         self.hough = HoughLineDetection()
         
-        # Left and right lines of the lane
-        self.left = None
-        self.right = None
-        self.lane_center_pt = None
-        self.lane_center_line = None
+        self.reset_lines_detected()
         self.calibrate_mask = True
 
         self.create_subscription(Image, image_topic, self.process_image, 10)
@@ -51,6 +47,14 @@ class Lane_Detector(Node):
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
+    def reset_lines_detected(self):
+        # Left and right lines of the lane
+        self.left = None
+        self.right = None
+        self.horizontal = None
+        self.lane_center_pt = None
+        self.lane_center_line = None
+        
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
             called cv_image for subsequent processing """
@@ -62,7 +66,8 @@ class Lane_Detector(Node):
         
         """
         # Empty arrays to store the coordinates of the left and right lines
-        left, right = [], []
+        left, right, horizontal = [], [], []
+
         # Loops through every detected line
         for line in lines:
             # Reshapes line from 2D array to 1D array
@@ -70,19 +75,33 @@ class Lane_Detector(Node):
             line = Line(x1, y1, x2, y2)
             # If slope is negative, the line is to the left of the lane, and otherwise, the line is to the right of the lane
             # TODO: add check here to make sure the line is not horizontal. We want to deal with that edge case separately. 
-            if line.slope < 0:
+            if line.is_horizontal():
+                horizontal.append((line.slope, line.y_intercept))
+            elif line.slope < 0:
                 left.append((line.slope, line.y_intercept))
             else:
                 right.append((line.slope, line.y_intercept))
         # Averages out all the values for left and right into a single slope and y-intercept value for each line
         left_avg = np.average(left, axis = 0)
         right_avg = np.average(right, axis = 0)
+        horizontal_avg = np.average(horizontal, axis = 0)
         # Caculate left and right lines for the lanes
-        try:
-            self.left = self.line_from_params(left_avg)
-            self.right = self.line_from_params(right_avg)
-        except:
-            print("params avg: ", left_avg, right_avg)
+        self.left = self.line_from_params(left_avg)
+        self.right = self.line_from_params(right_avg)
+        self.horizontal = self.line_from_params(horizontal_avg)
+    
+    def need_to_turn(self):
+        """ Use the horizontal line to inform whether we need to turn or not. 
+        """
+        threshold = self.img_shape[0]/2
+        # Get the point on the line at the x center of the img frame. 
+        x = self.img_shape[1]/2
+        pt = self.horizontal.get_point_at_x(x)
+        # If the point y is below the threshold, the line is too close and we need to turn. 
+        if pt.y > threshold:
+            # TODO: 90 degree turn of robot
+            print("NEED TO TURN HERE")
+
 
     def calc_lane_intersection(self):
         ''' Given the left and right lanes, figure out where the center of the lanes is.
@@ -118,6 +137,8 @@ class Lane_Detector(Node):
             params: slope, y intercept
             pt: point the line passes through
         '''
+        if params == None:
+            return None
         m, b = params
         if pt != None:
             # line length
@@ -145,7 +166,7 @@ class Lane_Detector(Node):
             cv2.circle(self.cv_image, self.lane_center_pt.xy, radius=10, color=(255, 0, 0), thickness=-1)
             self.lane_center_line.draw(self.cv_image) 
     
-    def display_coordinates(self, event, x, y, flags, params):
+    def display_coordinates_upon_click(self, event, x, y, flags, params):
         # checking for left mouse clicks
         if event == cv2.EVENT_LBUTTONDOWN:
             # displaying the coordinates on the Shell
@@ -160,11 +181,13 @@ class Lane_Detector(Node):
     def run_lane_detector(self):
         lines = self.hough.do_hough_line_transform(self.cv_image)
         self.calc_lane_lines(lines)
-        # self.calc_road_center()
-        # print("center_pt", self.lane_center_pt)
-        # print(self.lane_center_line.slope)
-        # print(self.lane_center_line)
-        # self.visualize_lanes()
+        # only find intersection if we see two lines lol
+        if self.left and self.right:
+            self.calc_road_center()
+            print("center_pt", self.lane_center_pt)
+            print(self.lane_center_line.slope)
+            print(self.lane_center_line)
+        self.visualize_lanes()
 
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
@@ -184,7 +207,7 @@ class Lane_Detector(Node):
             cv2.waitKey(5)
 
             if self.calibrate_mask:
-                cv2.setMouseCallback('video_window', self.display_coordinates)
+                cv2.setMouseCallback('video_window', self.display_coordinates_upon_click)
                 cv2.waitKey(0)
 
 """

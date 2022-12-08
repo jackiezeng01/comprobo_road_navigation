@@ -30,6 +30,26 @@ class Line:
         y_intercept = parameters[1]
         return slope, y_intercept
 
+    def is_horizontal(self, threshold = 0.5):
+        # the slope of a horizontal line is zero
+        if self.slope <= threshold and self.slope >= -threshold:
+            return True
+        return False
+    
+    def get_point_at_x(self, x):
+        """ Get point on the line at a given x location
+        """
+        # y = mx+b
+        y = self.slope*x + self.y_intercept
+        return Point(x,y)
+    
+    def get_point_at_y(self, y):
+        """ Get point on the line at a given y location
+        """
+        # x = (y-b)/m
+        x = (y-self.y_intercept)/self.slope
+        return Point(x,y)
+
     def draw(self, frame):
         cv2.line(frame, (self.pt1.x, self.pt1.y), (self.pt2.x,
                  self.pt2.y), (0, 255, 255), 3, cv2.LINE_AA)
