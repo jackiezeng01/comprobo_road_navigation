@@ -21,6 +21,12 @@ class AprilTagDetector(Node):
         super().__init__('ball_tracker')
         self.cv_image = None                        # the latest image from the camera
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
+        self.apriltag_stop_distances = {2: 2300,
+                                        3: 2600,
+                                        4: 2300,
+                                        5: 2600,
+                                        6: 2300,
+                                        8: 2600,}
 
         self.create_subscription(Image, image_topic, self.process_image, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
@@ -33,10 +39,15 @@ class AprilTagDetector(Node):
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
     def detect_apriltags(self):
+        """
+        Detects apriltags in the camera view and returns them as a
+        dictionary with tag IDs as keys and sizes as values
+        """
         gray = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2GRAY)
         options = apriltag.DetectorOptions(families="tag36h11")
         detector = apriltag.Detector(options)
         results = detector.detect(gray)
+        apriltags = {}
 
         # loop over the AprilTag detection results
         for r in results:
@@ -58,11 +69,13 @@ class AprilTagDetector(Node):
             # draw the tag family on the image
             tagFamily = r.tag_family.decode("utf-8")
             tagID = r.tag_id
-            size = abs(int(ptB[0]) - int(ptA[0])) * abs(int(ptB[1]) - int(ptC[1]))
-            cv2.putText(self.cv_image, str(tagID), (ptA[0], ptA[1] - 15),
+            size = pow(int(ptB[0]) - int(ptA[0]), 2)
+            cv2.putText(self.cv_image, str(tagID), (ptA[0], ptA[1] + 50),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 50), 2)
+            cv2.putText(self.cv_image, str(size), (ptB[0], ptB[1] - 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            cv2.putText(self.cv_image, str(size), (ptB[0], ptB[1] - 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            apriltags[tagID] = size
+        return apriltags
 
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
@@ -70,8 +83,36 @@ class AprilTagDetector(Node):
             issues with single threaded executors in ROS2 """
         cv2.namedWindow('video_window', 0)
         cv2.resizeWindow('video_window', 800, 500)
-        while True:
-            self.detect_apriltags()
+        while True and self.cv_image is not None:
+            """
+            Right now, the behavior is to keep going straight at 0.1 speed until the target apriltag
+            is bigger than the size listed in self.apriltag_stop_distances (i.e. the apriltag is the
+            target distance away)
+
+            What we need to do next is combine this with line following + path planning instructions.
+            The end behavior should be:
+            while path planning instructions != []:
+                Pop first item from path planning instructions (e.g. Turn left at april id 5)
+                target apriltag = 5
+                target distance = self.apriltag_stop_distances.get(target apriltag)
+                While (the target apriltag is not the target distance away):
+                    keep doing line following
+                    if (target apriltag is the target distance away):
+                        turn behavior (left, based on instructions)
+                        break
+            """
+            aprilTag_to_look_for = 5
+            size_at_which_to_stop = self.apriltag_stop_distances.get(aprilTag_to_look_for)
+            aprilTags = self.detect_apriltags()
+            msg = Twist()
+            # print(aprilTags)
+            msg.linear.x = 0.1
+            if aprilTag_to_look_for in aprilTags.keys():
+                print("size aprilTag_to_look_for", aprilTags.get(aprilTag_to_look_for))
+                # if we have seen the apriltag we are looking for at the right distance away
+                if aprilTags.get(aprilTag_to_look_for) >= size_at_which_to_stop:
+                    msg.linear.x = 0.0
+            self.pub.publish(msg)
             self.run_loop()
             time.sleep(0.1)
 
