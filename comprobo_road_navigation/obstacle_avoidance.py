@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import os
 from cv_bridge import CvBridge
+from geometry_msgs.msg import Twist, Vector3, Quaternion
+import math
 
 class ObstacleAvoidance():
     '''
@@ -19,6 +21,7 @@ class ObstacleAvoidance():
         self.vel_pub = pub
         self.cv_image = None
         self.direction = 0
+        self.change_lanes_flag = False
     
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
@@ -72,26 +75,28 @@ class ObstacleAvoidance():
         return np.array(true_centroids)
 
     def detect_obstacles(self, ranges):
-        dist_threshold = 0.5
-        point_threshold = 20
+        dist_threshold = 0.6
+        point_threshold = 10
         ob_points = 0
         obstacle = False
         if len(ranges):
             for angle in range(-15,15):
                 idx = (angle + 360) % 360
                 dist = ranges[idx]
-                # print(f'Angle: {angle}, Distance: {dist}')
-                if dist < dist_threshold:
+                print(f'Angle: {angle}, Distance: {dist}')
+                if dist < dist_threshold and dist != 0.0:
                     ob_points += 1
                     print(f'Num points: {ob_points}')
-            if ob_points > point_threshold:
-                obstacle = True
+                if ob_points > point_threshold:
+                    obstacle = True
+                    return obstacle
         return obstacle
 
 
     def find_slope(self, image):
         self.cv_image = image
         if self.cv_image is not None:
+            print("found image")
             # frame = self.cv_image
             # Convert to HSV format and color threshold
             hsv = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
@@ -124,26 +129,31 @@ class ObstacleAvoidance():
 
     def find_turn_direction(self, slope):
         if slope > 0:
-            return -1 # left ( direction of angular speed)
+            print("turning left")
+            return 1 # left ( direction of angular speed)
         else:
-            return 1 # right
+            print("turning right")
+            return -1 # right
 
 
-    def obstacle_behaviour(self, ranges, image, turn_flag):
-        if turn_flag:
-           slope = self.find_slope(image)
-           if np.sign(self.direction) == np.sign(slope):
-                turn_flag = False
-                return 0, turn_flag
-        else:
+
+
+
+    def obstacle_behaviour(self, ranges, image):
+        "returns velocities"
+        if not self.change_lanes_flag:
             obstacle_detected = self.detect_obstacles(ranges)
             if obstacle_detected:
                 print('obstacle detected')
                 slope = self.find_slope(image)
-                self.direction = self.find_turn_direction(slope)
-                return self.direction * 0.3, True
+                if slope:
+                    self.direction = self.find_turn_direction(slope)
+                    print("Direction", self.direction)
+                    return self.direction * 0.1, True
+                else:
+                    return 0
             else:    
-                return 0, False
+                return 0
         
 
         
