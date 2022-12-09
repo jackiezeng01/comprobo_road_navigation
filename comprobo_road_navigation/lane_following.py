@@ -21,13 +21,15 @@ import math
 import os
 import pandas as pd
 import time
+
 import numpy as np
 from rclpy.node import Node
 from cv_bridge import CvBridge
 from threading import Thread
 from sensor_msgs.msg import Image
-from copy import deepcopy
 from geometry_msgs.msg import Twist, Vector3
+from nav_msgs.msg import Odometry
+from copy import deepcopy
 from scipy.stats import linregress
 import rclpy
 from helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion
@@ -38,7 +40,7 @@ class Lane_Detector(Node):
     def __init__(self, image_topic):
         super().__init__('lane_detector')
         self.cv_image = None                        # the latest image from the camera
-        self.img_shape = None
+        self.img_shape = [768, 1024]
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
         self.hough = HoughLineDetection()
 
@@ -46,14 +48,17 @@ class Lane_Detector(Node):
         self.twt = Twist()
         # rotation stuff
         self.start_orientation = None
+        
         self.rot_speed = 0.3
         self.lin_speed = 0.1
         
         self.reset_lines_detected()
         self.calibrate_mask = False
 
-        self.create_subscription(Image, image_topic, self.process_image, 10)
+        self.sub_image = self.create_subscription(Image, image_topic, self.process_image, 10)
+        self.sub_odom = self.create_subscription(Odometry, '/odom', self.process_odom, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
+
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
@@ -72,7 +77,7 @@ class Lane_Detector(Node):
         self.img_shape = self.cv_image.shape
         self.reset_lines_detected()
 
-    def get_Odom(self, msg):
+    def process_odom(self, msg):
         self.position = msg.pose.pose.position
         self.orientation = euler_from_quaternion(msg.pose.pose.orientation)
 
@@ -190,6 +195,8 @@ class Lane_Detector(Node):
     def approaching_horizontal_border(self):
         """ Use the horizontal line to inform whether we need to turn or not. 
         """
+        if self.horizontal is None:
+            return False
         threshold = self.img_shape[0]/2
         # Get the point on the line at the x center of the img frame. 
         x = self.img_shape[1]/2
@@ -223,7 +230,63 @@ class Lane_Detector(Node):
         """
         self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
         self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
+        self.pub.publish(self.twt)
+   
+    def adjust_leftward(self):
+        """ Adjust leftward while still driving forward
+        """
+        print("too right")
 
+        self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
+        self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed/2)
+        self.pub.publish(self.twt)
+ 
+    def adjust_rightward(self):
+        """ Adjust righward while still driving forward
+        """
+        print("too left")
+
+        self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
+        self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rot_speed/2)
+        self.pub.publish(self.twt)
+
+    def drive_within_the_lane(self):
+        """ Evaluate the robot's position in the lane to see if we need to make any adjustments
+        """
+
+        # if it needs to turn left, the center dot is to the left
+        center_threshold = 20
+        lane_range = [  self.img_shape[1]/2-center_threshold, 
+                        self.img_shape[1]/2+center_threshold]
+        x = self.lane_center_pt.x
+        print(lane_range)
+        print(x)
+        if lane_range[0] <= x <= lane_range[1]:
+            # centered
+            print("centered")
+            self.drive_straight()
+        elif x < lane_range[0]:
+            # pointing too far right
+            # print("too right")
+            self.adjust_leftward()
+        else:
+            # pointing too far left
+            # print("too left")
+            self.adjust_rightward()
+
+        # if self.lane_center_pt.x
+
+    def drive(self):
+        """ This function determines how the robot will react and drive.        
+        """
+        if self.approaching_horizontal_border():
+            self.turn_ninety_deg()
+        elif self.lane_center_pt is not None:
+            self.drive_within_the_lane()
+        else:
+            self.drive_straight()
+        self.pub.publish(self.twt)
+        
     def run_lane_detector(self):
         if self.cv_image is not None:
             lines = self.hough.do_hough_line_transform(self.cv_image)
@@ -238,13 +301,6 @@ class Lane_Detector(Node):
                     # print(self.lane_center_line)
                 self.visualize_lanes()
 
-    def drive(self):
-        """ This function determines how the robot will react and drive.        
-        """
-        if self.approaching_horizontal_border():
-            self.turn_ninety_deg()
-        else:
-            self.drive_straight()
             
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
@@ -256,7 +312,7 @@ class Lane_Detector(Node):
             
 
             self.run_lane_detector()
-            # self.drive()
+            self.drive()
             self.run_loop()
             time.sleep(0.1)
 
