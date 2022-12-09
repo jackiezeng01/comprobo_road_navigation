@@ -5,9 +5,11 @@ import time
 import math
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
 from copy import deepcopy
 from cv_bridge import CvBridge
 import cv2
+import math
 import comprobo_road_navigation.helper_functions as helper_functions
 import numpy as np
 from geometry_msgs.msg import Twist, Vector3, Quaternion
@@ -27,19 +29,26 @@ class NeatoCar(Node):
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
         self.sub_image = self.create_subscription(Image, image_topic, self.process_image, 10)
         self.sub_scan = self.create_subscription(LaserScan, 'scan', self.process_laserscan, 10)
+        self.sub_odom = self.create_subscription(Odometry, '/odom', self.process_odom, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
         self.change_lanes_flag = False
+        self.first_turn = True
+        self.second_turn = False
+        self.drive_straight = False
         self.ranges = []
         # rotation stuff
         self.start_orientation = None
-        self.rotation_speed = 0.3
+        self.orientation = None
+        self.position = None
+        self.rotation_speed = 0.6
         # self.shape_classifier = ShapeClassifier()
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
-        self.turning_flag = 0
+        self.turning_flag = False
+        # self.velocity = Twist()
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
-    def get_Odom(self, msg):
+    def process_odom(self, msg):
         self.position = msg.pose.pose.position
         self.orientation = helper_functions.euler_from_quaternion(msg.pose.pose.orientation)
 
@@ -51,13 +60,10 @@ class NeatoCar(Node):
     def process_laserscan(self, msg):
         self.ranges = msg.ranges
  
-
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
             We are using a separate thread to run the loop_wrapper to work around
             issues with single threaded executors in ROS2 """
-        # cv2.namedWindow('frame_with_centroids', 0)
-        # cv2.resizeWindow('frame_with_centroids', 800, 500)
         while True:
             self.run_loop()
             time.sleep(1)
@@ -66,8 +72,9 @@ class NeatoCar(Node):
     def turn_ninety_deg(self):
         # set rotation speed 
         if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
-            self.turning_flag = 0
+            self.turning_flag = False
             self.start_orientation = None
+            print('inside if')
             return Vector3(x=0.0, y=0.0, z=0.0)
         else: 
             return Vector3(x=0.0, y=0.0, z=self.rotation_speed)
@@ -82,14 +89,10 @@ class NeatoCar(Node):
                 self.start_orientation = self.orientation
             velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
             velocity.angular = self.turn_ninety_deg()
-        if not self.change_lanes_flag:
-            self.turn_speed = 0
-            self.turn_speed, self.change_lanes_flag = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.change_lanes_flag)
-        if self.change_lanes_flag:
-            velocity.angular.z = float(self.turn_speed)
+            print("vel",velocity)
+        if self.orientation and self.position:
+            velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, velocity, self.orientation, self.position)
 
-
-        print(f'Linear speed{velocity.linear.x}, Angular speed: {velocity.angular.z}')
         self.pub.publish(velocity)
             
 
