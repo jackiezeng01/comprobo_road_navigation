@@ -38,10 +38,13 @@ class NeatoCar(Node):
         self.ranges = []
         # rotation stuff
         self.start_orientation = None
+        self.orientation = None
+        self.position = None
         self.rotation_speed = 0.6
         # self.shape_classifier = ShapeClassifier()
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
         self.turning_flag = False
+        # self.velocity = Twist()
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
@@ -68,7 +71,6 @@ class NeatoCar(Node):
 
     def turn_ninety_deg(self):
         # set rotation speed 
-        # print("diff (should get to 90)", abs(self.start_orientation.z - self.orientation.z))
         if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
             self.turning_flag = False
             self.start_orientation = None
@@ -76,38 +78,6 @@ class NeatoCar(Node):
             return Vector3(x=0.0, y=0.0, z=0.0)
         else: 
             return Vector3(x=0.0, y=0.0, z=self.rotation_speed)
-
-    def change_lanes(self):
-        # set rotation speed 
-        if self.first_turn:            
-            if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
-                self.first_turn = False
-                self.start_orientation = None
-                self.drive_straight = True
-                print("one")
-                return Vector3(x=0.0, y=0.0, z=0.0), Vector3(x=0.0, y=0.0, z=0.0)
-                
-            else: 
-                print("two")
-                return Vector3(x=0.0, y=0.0, z=0.0), Vector3(x=0.0, y=0.0, z=self.rotation_speed)
-        if self.drive_straight:
-            if math.dist([self.start_position.x, self.start_position.y], [self.position.x, self.position.y]) > 0.3:
-                self.drive_straight = False
-                self.second_turn = True
-                self.start_orientation = None
-                print("three")
-                return Vector3(x=0.0, y=0.0, z=0.0), Vector3(x=0.0, y=0.0, z=0.0)
-            else:
-                return Vector3(x=0.1, y=0.0, z=0.0), Vector3(x=0.0, y=0.0, z=0.0)
-        if self.second_turn:
-            if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
-                self.second_turn = False
-                self.start_orientation = None
-                self.change_lanes_flag = False
-                return Vector3(x=0.0, y=0.0, z=0.0), Vector3(x=0.0, y=0.0, z=0.0)
-            else: 
-                return Vector3(x=0.0, y=0.0, z=0.0), Vector3(x=0.0, y=0.0, z=-self.rotation_speed)
-
 
     def run_loop(self):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
@@ -120,18 +90,8 @@ class NeatoCar(Node):
             velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
             velocity.angular = self.turn_ninety_deg()
             print("vel",velocity)
-
-        self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image)
-        
-        # if not self.change_lanes_flag:
-        #     self.rotation_speed = 0
-        #     self.rotation_speed, self.change_lanes_flag = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.change_lanes_flag)
-        
-        # if self.change_lanes_flag:
-        #     if self.start_orientation is None:
-        #         self.start_orientation = self.orientation
-        #         self.start_position = self.position            
-        #     velocity.linear, velocity.angular = self.obstacle_avoidance.change_lanes(self.start_orientation, self.orientation, self.start_position, self.position)
+        if self.orientation and self.position:
+            velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, velocity, self.orientation, self.position)
 
         self.pub.publish(velocity)
             

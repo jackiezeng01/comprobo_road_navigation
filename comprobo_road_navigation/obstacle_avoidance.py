@@ -22,6 +22,15 @@ class ObstacleAvoidance():
         self.cv_image = None
         self.direction = 0
         self.change_lanes_flag = False
+        self.start_orientation = None
+        self.start_position = None
+        self.orientation = None
+        self.position = None
+        self.first_turn = True
+        self.drive_straight = False
+        self.second_turn = True
+        self.rotation_speed = 0.4
+        self.straight_speed = 0.1
     
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
@@ -136,12 +145,58 @@ class ObstacleAvoidance():
             return -1 # right
 
 
+    def change_lanes(self):
+            # set rotation speed 
+            if self.first_turn:            
+                if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+                    self.first_turn = False
+                    self.start_orientation = None
+                    self.drive_straight = True
+                    self.velocity.linear.x = 0.0
+                    self.velocity.angular.z = 0.0
+                    return self.velocity
+                else: 
+                    self.velocity.linear.x = 0.0
+                    self.velocity.angular.z = self.rotation_speed
+                    return self.velocity
+            if self.drive_straight:
+                if math.dist([self.start_position.x, self.start_position.y], [self.position.x, self.position.y]) > 0.3:
+                    self.drive_straight = False
+                    self.second_turn = True
+                    self.start_orientation = None
+                    self.velocity.linear.x = 0.0
+                    self.velocity.angular.z = 0.0
+                    return self.velocity
+                else:
+                    self.velocity.linear.x = self.straight_speed
+                    self.velocity.angular.z = 0.0
+                    return self.velocity
+            if self.second_turn:
+                if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+                    self.second_turn = False
+                    self.start_orientation = None
+                    self.change_lanes_flag = False
+                    self.velocity.linear.x = 0.0
+                    self.velocity.angular.z = 0.0
+                    return self.velocity
+                else: 
+                    self.velocity.linear.x = 0.0
+                    self.velocity.angular.z = -self.rotation_speed
+                    return self.velocity
 
 
-
-    def obstacle_behaviour(self, ranges, image):
-        "returns velocities"
-        if not self.change_lanes_flag:
+    def obstacle_behaviour(self, ranges, image, velocity: Twist, orientation, position):
+        "returns velocities, in the form of twist"
+        self.velocity = velocity
+        self.orientation = orientation
+        self.position = position
+        if self.change_lanes_flag:
+            if self.start_orientation is None:
+                self.start_orientation = self.orientation
+                self.start_position = self.position 
+            self.velocity = self.change_lanes() 
+            return self.velocity       
+        else:
             obstacle_detected = self.detect_obstacles(ranges)
             if obstacle_detected:
                 print('obstacle detected')
@@ -149,11 +204,12 @@ class ObstacleAvoidance():
                 if slope:
                     self.direction = self.find_turn_direction(slope)
                     print("Direction", self.direction)
-                    return self.direction * 0.1, True
+                    self.change_lanes_flag = True
+                    return self.velocity
                 else:
-                    return 0
-            else:    
-                return 0
+                    return self.velocity
+            else:
+                return self.velocity
         
 
         
