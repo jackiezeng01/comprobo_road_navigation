@@ -12,6 +12,8 @@ TODO:
 - Add twist controls that corresponds the lane detection
     - Turn to keep neato in the center of the lane.
 - Detect horizontal lines, stop and turn when a certain distance away. 
+- Horizontal needs to be a certain length to be classified as correct
+- Calibrate the camera with the fisheye lens - currently the front straight lines are not straigh :/
 '''
 import cv2
 import matplotlib.pyplot as plt
@@ -104,7 +106,7 @@ class Lane_Detector(Node):
             self.right = self.line_from_params(right_avg)
         if horizontal != []:
             horizontal_avg = np.average(horizontal, axis = 0)
-            print("horizontal avg:", horizontal_avg)
+            # print("horizontal avg:", horizontal_avg)
             self.horizontal = self.line_from_params(horizontal_avg)
 
 
@@ -164,15 +166,20 @@ class Lane_Detector(Node):
             self.left.draw(self.cv_image)
         if self.right:
             self.right.draw(self.cv_image)
-        if self.lane_center_line:
+        if self.lane_center_line and self.lane_center_pt:
             cv2.circle(self.cv_image, self.lane_center_pt.xy, radius=10, color=(255, 0, 0), thickness=-1)
             self.lane_center_line.draw(self.cv_image) 
+        if self.horizontal:
+            self.horizontal.draw(self.cv_image)
     
-    def display_coordinates_upon_click(self, event, x, y, flags, params):
+    def update_lane_detection_area(self, event, x, y, flags, params):
         # checking for left mouse clicks
-        if event == cv2.EVENT_LBUTTONDOWN:
+        if event == cv2.EVENT_LBUTTONDOWN and len(self.hough.polygon_pts)<6:
             # displaying the coordinates on the Shell
             print(x, ' ', y)
+            self.hough.polygon_pts.append((x,y))
+            print(self.hough.polygon_pts)
+            print(len(self.hough.polygon_pts))
             # displaying the coordinates on the image window
             font = cv2.FONT_HERSHEY_SIMPLEX
             cv2.putText(self.cv_image, str(x) + ',' +
@@ -218,16 +225,18 @@ class Lane_Detector(Node):
         self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
 
     def run_lane_detector(self):
-        if self.cv_image.all != None:
+        if self.cv_image is not None:
             lines = self.hough.do_hough_line_transform(self.cv_image)
-            self.calc_lane_lines(lines)
-            # only find intersection if we see two lines lol
-            if self.left and self.right:
-                self.calc_road_center()
-                # print("center_pt", self.lane_center_pt)
-                # print(self.lane_center_line.slope)
-                # print(self.lane_center_line)
-            self.visualize_lanes()
+            self.hough.draw_hough_lines(self.cv_image, lines)
+            if lines is not None:
+                self.calc_lane_lines(lines)
+                # only find intersection if we see two lines lol
+                if self.left and self.right:
+                    self.calc_road_center()
+                    # print("center_pt", self.lane_center_pt)
+                    # print(self.lane_center_line.slope)
+                    # print(self.lane_center_line)
+                self.visualize_lanes()
 
     def drive(self):
         """ This function determines how the robot will react and drive.        
@@ -244,6 +253,8 @@ class Lane_Detector(Node):
         cv2.namedWindow('video_window', 0)
         cv2.resizeWindow('video_window', 800, 500)
         while True:
+            
+
             self.run_lane_detector()
             # self.drive()
             self.run_loop()
@@ -254,10 +265,14 @@ class Lane_Detector(Node):
         if not self.cv_image is None:
             cv2.imshow('video_window', self.cv_image)
             cv2.waitKey(5)
+            # print(self.calibrate_mask)
 
             if self.calibrate_mask:
-                cv2.setMouseCallback('video_window', self.display_coordinates_upon_click)
+                self.hough.polygon_pts = []
+                cv2.setMouseCallback('video_window', self.update_lane_detection_area)
                 cv2.waitKey(0)
+                self.calibrate_mask = self.hough.update_lane_mask()
+    
 
 """
 if __name__ == '__main__':
