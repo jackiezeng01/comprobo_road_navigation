@@ -3,32 +3,43 @@ from threading import Thread
 from rclpy.node import Node
 import time
 from sensor_msgs.msg import Image
-from copy import deepcopy
 import apriltag
 from cv_bridge import CvBridge
 import cv2
-import numpy as np
-from geometry_msgs.msg import Twist, Vector3
+from enum import Enum
+from geometry_msgs.msg import Twist
+
+Direction = Enum('Direction', ['STRAIGHT', 'LEFT', 'RIGHT'])
+Neato_state = Enum('Neato_state', ['FOLLOWING_INSTRUCTION', 'TURNING'])
 
 class AprilTagDetector(Node):
-    """ The BallTracker is a Python object that encompasses a ROS node 
-        that can process images from the camera and search for a ball within.
-        The node will issue motor commands to move forward while keeping
-        the ball in the center of the camera's field of view. """
+    """ The AprilTagDetector is a Python object that encompasses a ROS node 
+        that can process images from the camera and search for apriltags.
+        The node will issue motor commands
+        1. Move forward until it reaches the target apriltag
+        2. Follow the path planned instructions to turn left or right once
+        it has reached the target apriltag """
 
     def __init__(self, image_topic):
-        """ Initialize the ball tracker """
-        super().__init__('ball_tracker')
+        """ Initialize the apriltag detector """
+        super().__init__('apriltag_detector')
         self.cv_image = None                        # the latest image from the camera
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
-        self.apriltag_stop_distances = {2: 2300,
+        self.apriltag_stop_distances = {0: 2600,
+                                        1: 2600,
+                                        2: 2300,
                                         3: 2600,
                                         4: 2300,
                                         5: 2600,
                                         6: 2300,
-                                        8: 2600,}
+                                        7: 5000,
+                                        8: 2600}
 
         self.create_subscription(Image, image_topic, self.process_image, 10)
+        self.instructions = [(7, Direction.RIGHT),
+                             (3, Direction.LEFT),
+                             (2, Direction.RIGHT)]
+        self.state = Neato_state.FOLLOWING_INSTRUCTION
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
         thread = Thread(target=self.loop_wrapper)
         thread.start()
@@ -101,17 +112,29 @@ class AprilTagDetector(Node):
                         turn behavior (left, based on instructions)
                         break
             """
-            aprilTag_to_look_for = 5
+            # current_instruction = self.instructions.pop(0)
+            current_instruction = self.instructions[0]
+            print("current_instruction: ", current_instruction)
+            aprilTag_to_look_for = current_instruction[0]
+            action_at_aprilTag = current_instruction[1]
             size_at_which_to_stop = self.apriltag_stop_distances.get(aprilTag_to_look_for)
             aprilTags = self.detect_apriltags()
             msg = Twist()
             # print(aprilTags)
-            msg.linear.x = 0.1
-            if aprilTag_to_look_for in aprilTags.keys():
-                print("size aprilTag_to_look_for", aprilTags.get(aprilTag_to_look_for))
-                # if we have seen the apriltag we are looking for at the right distance away
-                if aprilTags.get(aprilTag_to_look_for) >= size_at_which_to_stop:
-                    msg.linear.x = 0.0
+            if self.state == Neato_state.FOLLOWING_INSTRUCTION:
+                msg.linear.x = 0.1
+                if aprilTag_to_look_for in aprilTags.keys():
+                    print("size aprilTag_to_look_for", aprilTags.get(aprilTag_to_look_for))
+                    # if we have seen the apriltag we are looking for at the right distance away
+                    if aprilTags.get(aprilTag_to_look_for) >= size_at_which_to_stop:
+                        msg.linear.x = 0.0
+                        self.state = Neato_state.TURNING
+            if self.state == Neato_state.TURNING:
+                msg.linear.x = 0.0
+                if action_at_aprilTag == Direction.LEFT:
+                    msg.angular.z = -0.2
+                if action_at_aprilTag == Direction.RIGHT:
+                    msg.angular.z = 0.2
             self.pub.publish(msg)
             self.run_loop()
             time.sleep(0.1)
