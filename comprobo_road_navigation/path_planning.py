@@ -104,5 +104,82 @@ def node_to_node(start_node, end_node, graph):
         path_node = next_node
     return path[::-1]
 
+def generate_instructions(graph, path):
+    instructions = []
+    for i, node in enumerate(path[1:-1]): 
+        previous_node = path[i]
+        next_node = path[i + 2]
+
+        if 'tag' in graph.edges[((node, next_node))]:
+            tag = graph.edges[((node, next_node))]['tag']
+            # the direction of travel is whichever coord has changed 
+            x_prev = node[0] - previous_node[0]
+            y_prev = node[1] - previous_node[1]
+            
+            # if we were moving in an x direction, now we want to go y
+            if abs(x_prev): 
+                dir = 'x'
+            # if we were moving in a y direction, now we want to go x
+            else: 
+                dir = 'y'
+
+            # if we were traveling in a positive direction:
+            if (x_prev > 0) | (y_prev > 0):
+                facing = 1
+            # otherwise we're traveling in a negative direction
+            else:
+                facing = -1
+
+            # which direction are we travelling next? 
+            x_next = next_node[0] - node[0]
+            y_next = next_node[1] - node[1]
+
+            # no change in direction, go straight
+            if (x_next == x_prev) & (y_next == y_prev):
+                instructions.append((tag, 'straight'))
+            # we used to be going x so now we're going y
+            elif dir == 'x':
+                # if we're facing a positive direction
+                if facing > 0:
+                    # turn right if we want to go positive
+                    if y_next > 0:
+                        instructions.append((tag, 'right'))
+                    # turn left if we want to go negative
+                    else: 
+                        instructions.append((tag, 'left'))
+                # if we're facing a negative direction
+                else: 
+                    # turn left if we want to go negative
+                    if y_next < 0: 
+                        instructions.append((tag, 'right'))
+                    else: 
+                        instructions.append((tag, 'left'))
+            elif dir == 'y':
+                # if we're facing a positive direction
+                if facing > 0:
+                    # turn right if we want to go positive
+                    if x_next > 0:
+                        instructions.append((tag, 'left'))
+                    # turn left if we want to go negative
+                    else: 
+                        instructions.append((tag, 'right'))
+                # if we're facing a negative direction
+                else: 
+                    # turn left if we want to go negative
+                    if x_next < 0: 
+                        instructions.append((tag, 'left'))
+                    else: 
+                        instructions.append((tag, 'right'))
+    return instructions
+
+
+
 graph = map_to_graph(map, 6, 7)
-print(node_to_node((0, 0), (5, 6), graph))
+tag_map = {((1, 0), (2, 0)): 6, ((2, 0), (3, 0)): 6, ((2, 0), (2, 1)): 5, \
+    ((0, 1), (0, 2)): 2, ((0, 2), (0, 3)): 2, ((1, 2), (2, 2)): 3, \
+    ((2, 1), (2, 2)): 4, ((2, 2), (2, 3)): 4, ((0, 4), (0, 5)): 1, \
+    ((2, 5), (3, 5)): 8}
+nx.set_edge_attributes(graph, tag_map, 'tag')
+path = node_to_node((4, 0), (0, 5), graph)
+print(path)
+print(generate_instructions(graph, path))
