@@ -30,13 +30,40 @@ def euler_from_quaternion(quaternion):
      
         return Vector3(x=roll_x, y=pitch_y, z=yaw_z) # in radians
 
+def undistort_img(img):
+    """ Undistort image using camera calibration parameters
+    """
+    method = "basic"
+    # image dimensions: (width, height)
+    dim = (1024, 768)
+    # camera matrix
+    mtx = np.array([  [511.924979, 0.000000, 498.854696], 
+                    [0.000000, 512.669071, 346.824822], 
+                    [0.000000, 0.000000, 1.000000]])
+
+    # distortion coefficients
+    dist = np.array([-0.237095, 0.050504, -0.009065, 0.000321, 0.000000])
+    # get refined camera matrix
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, dim, 1, dim)
+    if (method == "basic"):
+        # undistort with cv function
+        dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
+    else:
+        # undistort with remapping
+        mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, dim, 5)
+        dst = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
+    # crop the image
+    x, y, w, h = roi
+    dst = dst[y:y+h, x:x+w]
+    return dst
+
 """
 Lane following helper functions below -------------------------------------------
 """
 class Point:
     def __init__(self, x, y) -> None:
-        self.x = x
-        self.y = y
+        self.x = int(x)
+        self.y = int(y)
         self.xy = (int(x), int(y))
 
     def __str__(self):
@@ -61,12 +88,20 @@ class Line:
         y_intercept = parameters[1]
         return slope, y_intercept
 
-    def is_horizontal(self, threshold = 0.3):
+    def is_horizontal(self, threshold = 0.01):
         # the slope of a horizontal line is zero
-        if self.slope <= threshold and self.slope >= -threshold:
+        if abs(self.slope) <= threshold:
             return True
         return False
     
+    def is_within_lane_slope_threshold(self, threshold: list):
+        """ Check to see if the line is within the lane slop threshold. 
+        """
+        if threshold[0] <= abs(self.slope) <= threshold[1]:
+            return True
+        return False
+
+
     def get_point_at_x(self, x):
         """ Get point on the line at a given x location
         """
@@ -82,8 +117,13 @@ class Line:
         return Point(x,y)
 
     def draw(self, frame):
-        cv2.line(frame, (self.pt1.x, self.pt1.y), (self.pt2.x,
-                 self.pt2.y), (0, 255, 255), 3, cv2.LINE_AA)
+        # print((self.pt1.x, self.pt1.y), (self.pt2.x, self.pt2.y))
+        # catch for perfectly horizontal lines that will overload the algorithm
+        if abs(self.pt1.x) > 10000 or abs(self.pt1.y) > 10000:
+            return
+        else:
+            cv2.line(frame, (self.pt1.x, self.pt1.y), (self.pt2.x,
+                    self.pt2.y), (0, 255, 255), 3, cv2.LINE_AA)
 
     def __str__(self):
         return f"[{self.pt1}, {self.pt2}]"
