@@ -28,7 +28,7 @@ class PathPlanning():
         self.graph = self.map_to_graph(6, 7)
         self.path = []
         self.instructions = []
-        nx.set_edge_attributes(self.graph, tag_map, 'tag')
+        nx.set_node_attributes(self.graph, tag_map, 'tag')
 
     def map_to_graph(self, width, height):
         """
@@ -146,13 +146,25 @@ class PathPlanning():
         self.path.extend(path[::-1])
 
     def generate_instructions(self):
-        instructions = []
+        """
+        Generate instructions for navigating intersections. 
+
+        Uses the tag numbers at intersections and the direction of travel
+        to calculate which way to turn at intersections. Appends a tuple 
+        containing the tag number and either 'left', 'right', or 'straight' 
+        to self.instructions
+        """
         for i, node in enumerate(self.path[1:-1]): 
             previous_node = self.path[i]
             next_node = self.path[i + 2]
+            # we've reached an intersection:
+            if 'tag' in self.graph.nodes[node]:
+                tag = self.graph.nodes[node]['tag']
+                # if multiple tags are possible, figure out which one we'll 
+                # see based on the previous node
+                if type(tag) == dict:
+                    tag = tag[previous_node]
 
-            if 'tag' in self.graph.edges[((node, next_node))]:
-                tag = self.graph.edges[((node, next_node))]['tag']
                 # the direction of travel is whichever coord has changed 
                 x_prev = node[0] - previous_node[0]
                 y_prev = node[1] - previous_node[1]
@@ -213,10 +225,9 @@ class PathPlanning():
                             self.instructions.append((tag, 'right'))
 
 
-tag_map = {((1, 0), (2, 0)): 6, ((2, 0), (3, 0)): 6, ((2, 0), (2, 1)): 5, \
-    ((0, 1), (0, 2)): 2, ((0, 2), (0, 3)): 2, ((1, 2), (2, 2)): 3, \
-    ((2, 1), (2, 2)): 4, ((2, 2), (2, 3)): 4, ((0, 4), (0, 5)): 1, \
-    ((2, 5), (3, 5)): 8}
+tag_map = {(2, 0): {(3, 0): 6, (1, 0): 6, (2, 1): 5}, 
+            (2, 2): { (2, 1): 4, (2, 3): 4, (1, 2): 3},
+            (0, 2): 2, (2, 5): 8}
 plan_path = PathPlanning(tag_map)
 plan_path.node_to_node((4, 0), (0, 5))
 print(plan_path.path)
