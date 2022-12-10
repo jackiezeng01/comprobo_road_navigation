@@ -4,12 +4,12 @@ from rclpy.node import Node
 import time
 from sensor_msgs.msg import Image
 import apriltag
+from path_planning import PathPlanning
 from cv_bridge import CvBridge
 import cv2
 from enum import Enum
 from geometry_msgs.msg import Twist
 
-Direction = Enum('Direction', ['STRAIGHT', 'LEFT', 'RIGHT'])
 Neato_state = Enum('Neato_state', ['FOLLOWING_INSTRUCTION', 'TURNING'])
 
 class AprilTagDetector(Node):
@@ -23,8 +23,7 @@ class AprilTagDetector(Node):
     def __init__(self, image_topic):
         """ Initialize the apriltag detector """
         super().__init__('apriltag_detector')
-        self.cv_image = None                        # the latest image from the camera
-        self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
+        # Set up path planning, get instructions
         self.apriltag_stop_distances = {0: 2600,
                                         1: 2600,
                                         2: 2300,
@@ -32,14 +31,23 @@ class AprilTagDetector(Node):
                                         4: 2300,
                                         5: 2600,
                                         6: 2300,
-                                        7: 5000,
+                                        7: 2600,
                                         8: 2600}
+        tag_map = {((1, 0), (2, 0)): 6, ((2, 0), (3, 0)): 6, ((2, 0), (2, 1)): 5,
+                    ((0, 1), (0, 2)): 2, ((0, 2), (0, 3)): 2, ((1, 2), (2, 2)): 3,
+                    ((2, 1), (2, 2)): 4, ((2, 2), (2, 3)): 4, ((0, 4), (0, 5)): 1,
+                    ((2, 5), (3, 5)): 8}
+        self.pathplanner = PathPlanning(tag_map)
+        start_node = (3, 5)
+        end_node = (0, 2)
+        self.pathplanner.node_to_node(start_node, end_node)
+        self.instructions = self.pathplanner.generate_instructions()
+        self.state = Neato_state.FOLLOWING_INSTRUCTION        
 
+        # Set up ROS image input, subscribers and publishers
+        self.cv_image = None                        # the latest image from the camera
+        self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
         self.create_subscription(Image, image_topic, self.process_image, 10)
-        self.instructions = [(7, Direction.RIGHT),
-                             (3, Direction.LEFT),
-                             (2, Direction.RIGHT)]
-        self.state = Neato_state.FOLLOWING_INSTRUCTION
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
         thread = Thread(target=self.loop_wrapper)
         thread.start()
@@ -112,29 +120,39 @@ class AprilTagDetector(Node):
                         turn behavior (left, based on instructions)
                         break
             """
-            # current_instruction = self.instructions.pop(0)
-            current_instruction = self.instructions[0]
-            print("current_instruction: ", current_instruction)
-            aprilTag_to_look_for = current_instruction[0]
-            action_at_aprilTag = current_instruction[1]
-            size_at_which_to_stop = self.apriltag_stop_distances.get(aprilTag_to_look_for)
-            aprilTags = self.detect_apriltags()
             msg = Twist()
             # print(aprilTags)
-            if self.state == Neato_state.FOLLOWING_INSTRUCTION:
+            if self.state == Neato_state.TURNING:
+                current_instruction = self.instructions[0]
+                # current_instruction = self.instructions[0]
+                print("current_instruction: ", current_instruction)
+                aprilTag_to_look_for = current_instruction[0]
+                action_at_aprilTag = current_instruction[1]
+                size_at_which_to_stop = self.apriltag_stop_distances.get(aprilTag_to_look_for)
+                aprilTags = self.detect_apriltags()
+                print("FOLLOWING_INSTRUCTION")
                 msg.linear.x = 0.1
                 if aprilTag_to_look_for in aprilTags.keys():
                     print("size aprilTag_to_look_for", aprilTags.get(aprilTag_to_look_for))
                     # if we have seen the apriltag we are looking for at the right distance away
                     if aprilTags.get(aprilTag_to_look_for) >= size_at_which_to_stop:
                         msg.linear.x = 0.0
+                        self.instructions.pop(0)
                         self.state = Neato_state.TURNING
             if self.state == Neato_state.TURNING:
-                msg.linear.x = 0.0
-                if action_at_aprilTag == Direction.LEFT:
-                    msg.angular.z = -0.2
-                if action_at_aprilTag == Direction.RIGHT:
-                    msg.angular.z = 0.2
+                action_at_aprilTag == 'right'
+                print("TURNING")
+                t = time.time()
+                if (time.time() - t < 5):
+                    msg.linear.x = 0.1
+                    if action_at_aprilTag == 'right':
+                        msg.angular.z = -0.05
+                    if action_at_aprilTag == 'left':
+                        msg.angular.z = 0.05
+                else:
+                    self.state == Neato_state.FOLLOWING_INSTRUCTION
+                    msg.linear.x = 0.0
+                    msg.angular.z = 0.0
             self.pub.publish(msg)
             self.run_loop()
             time.sleep(0.1)
