@@ -5,6 +5,19 @@ from itertools import permutations
 
 class PathPlanning():
     def __init__(self, tag_map) -> None:
+        """
+        Initialize an instance of path planning. 
+
+        tag_map: a dictionary where the keys are tuples. Each tuple contains
+            two tuples, representing the coordinates of two adjacent nodes.
+            The values are the tag number that connects the two nodes 
+        
+        self.map_grid: a binary representation of our map
+        self.graph: our map converted into a graph, with edges between adjacent
+            nodes
+        self.path: a list where the nodes to visit will be stores 
+        self.instructions: a list where the instructions will be stored
+        """
         self.map_grid = [1, 1, 1, 1, 1, 0, 
         1, 0, 1, 0, 1, 0,
         1, 1, 1, 0, 1, 1,
@@ -18,6 +31,14 @@ class PathPlanning():
         nx.set_edge_attributes(self.graph, tag_map, 'tag')
 
     def map_to_graph(self, width, height):
+        """
+        Convert the binary map into a graph representation. 
+
+        width: int representing the width of the map
+        height: int representing the height of the map
+
+        return: a Networkx graph object
+        """
         graph = nx.Graph()
         # add a node for each free square
         for x in range(0, width):
@@ -39,6 +60,14 @@ class PathPlanning():
         return graph
 
     def calculate_heur(self, start_node, end_node):
+        """
+        Helper function to calculate an estimated distance between nodes.
+
+        start_node: tuple representing the coordinates of the node to start at
+        end_node: tuple representing the coordinates of the node to end at
+
+        return: float representing the Euclidean distance between the nodes
+        """
         # we're going for a straightforward Euclidean distance here
         x1 = start_node[0]
         y1 = start_node[1]
@@ -49,6 +78,12 @@ class PathPlanning():
         return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
     def node_to_node(self, start_node, end_node):
+        """
+        Find a path from the start node to the end node. 
+
+        start_node: tuple of coordinates representing the start node
+        end_node: tuple of coordinates representing the end node
+        """
         path = []
         path_node = None
 
