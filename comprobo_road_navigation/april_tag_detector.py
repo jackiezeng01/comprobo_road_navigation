@@ -4,7 +4,7 @@ from rclpy.node import Node
 import time
 from sensor_msgs.msg import Image
 import apriltag
-from path_planning import PathPlanning
+from comprobo_road_navigation.path_planning import PathPlanning
 from cv_bridge import CvBridge
 import cv2
 from enum import Enum
