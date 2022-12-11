@@ -34,7 +34,7 @@ from nav_msgs.msg import Odometry
 from copy import deepcopy
 from scipy.stats import linregress
 import rclpy
-from helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
+from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
 
 class Lane_Detector():
     """ Finds the lanes in the image. """
