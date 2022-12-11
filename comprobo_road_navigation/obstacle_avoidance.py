@@ -122,6 +122,14 @@ class ObstacleAvoidance():
             areas = self.find_areas(contours)        
             filtered_contours, centroids = self.filter_contours_find_centroids(contours, areas)
 
+            arr = np.array(centroids)
+            max_idx = np.argmax(arr, axis=0)
+            _, max_y = arr[max_idx]
+            if max_y[0] < self.frame_width /2:
+                slope = 1
+            else:
+                slope = -1
+
             # detect outliers
             # true_centroids = self.detect_outliers(centroids)
             # find slope
@@ -129,6 +137,14 @@ class ObstacleAvoidance():
             if len(centroids)>= 2:
                 slope = self.find_line_fit(np.array(centroids))
                 print(f'Slope: {slope}')
+
+            # arr = np.array(centroids)
+            # max_idx = np.argmax(arr, axis=0)
+            # _, max_y = arr[max_idx]
+            # if max_y[0] < self.frame_width /2:
+            #     slope = 1
+            # else:
+            #     slope = -1
 
             # draw centroids
             for centroid in centroids:
@@ -204,6 +220,7 @@ class ObstacleAvoidance():
                 if slope:
                     self.direction = self.find_turn_direction(slope)
                     print("Direction", self.direction)
+                    self.rotation_speed = self.direction * self.rotation_speed
                     self.change_lanes_flag = True
                     return self.velocity
                 else:
