@@ -302,7 +302,7 @@ class Lane_Detector():
                     # print(self.lane_center_line)
                 self.visualize_lanes()
         # return the correct twist values
-        return self.drive()
+        return self.drive(), self.cv_image
 
             
     def loop_wrapper(self):
