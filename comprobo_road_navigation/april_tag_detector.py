@@ -41,8 +41,10 @@ class AprilTagDetector(Node):
         start_node = (3, 5)
         end_node = (0, 2)
         self.pathplanner.node_to_node(start_node, end_node)
-        self.instructions = self.pathplanner.generate_instructions()
-        self.state = Neato_state.FOLLOWING_INSTRUCTION        
+        print("path: ", self.pathplanner.path)
+        self.pathplanner.generate_instructions()
+        print("instructions: ", self.pathplanner.instructions)
+        self.state = Neato_state.FOLLOWING_INSTRUCTION
 
         # Set up ROS image input, subscribers and publishers
         self.cv_image = None                        # the latest image from the camera
