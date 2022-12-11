@@ -15,6 +15,7 @@ import numpy as np
 from geometry_msgs.msg import Twist, Vector3, Quaternion
 # from comprobo_road_navigation.shape_classification import ShapeClassifier
 from comprobo_road_navigation.obstacle_avoidance import ObstacleAvoidance
+from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
 
 class NeatoCar(Node):
     """ The BallTracker is a Python object that encompasses a ROS node 
@@ -55,7 +56,9 @@ class NeatoCar(Node):
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
             called cv_image for subsequent processing """
-        self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        self.cv_image = undistort_img(cv_image)
+
 
     def process_laserscan(self, msg):
         self.ranges = msg.ranges
