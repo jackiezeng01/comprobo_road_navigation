@@ -36,10 +36,11 @@ from scipy.stats import linregress
 import rclpy
 from helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
 
-class Lane_Detector():
+class Lane_Detector(Node):
     """ Finds the lanes in the image. """
 
-    def __init__(self):
+    def __init__(self, image_topic):
+        super().__init__('lane_detector')
         self.cv_image = None                        # the latest image from the camera
         self.img_shape = [668, 978]
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
@@ -47,11 +48,9 @@ class Lane_Detector():
 
         # drive
         self.twt = Twist()
-        # odom stuff
+        # rotation stuff
         self.start_orientation = None
-        self.orientation = None
-        self.position = None
-
+        
         self.rot_speed = 0.3
         self.lin_speed = 0.05
         
@@ -63,6 +62,13 @@ class Lane_Detector():
         # if the horizontal line is below 400, it is too close to the robot and we should tunr
         self.horizontal_y_threshold = 500
 
+        self.sub_image = self.create_subscription(Image, image_topic, self.process_image, 10)
+        self.sub_odom = self.create_subscription(Odometry, '/odom', self.process_odom, 10)
+        self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
+
+        thread = Thread(target=self.loop_wrapper)
+        thread.start()
+
     def reset_lines_detected(self):
         # Left and right lines of the lane
         self.left = None
@@ -71,6 +77,25 @@ class Lane_Detector():
         self.lane_center_pt = None
         self.lane_center_line = None
         
+    def process_image(self, msg):
+        """ Process image messages from ROS and stash them in an attribute
+            called cv_image for subsequent processing """
+        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        self.cv_image = undistort_img(cv_image)
+        self.reset_lines_detected()
+
+    def process_odom(self, msg):
+        self.position = msg.pose.pose.position
+        self.orientation = euler_from_quaternion(msg.pose.pose.orientation)
+    
+    def getKey(self):
+        # get user's current key press
+        tty.setraw(sys.stdin.fileno())
+        select.select([sys.stdin], [], [], 0)
+        key = sys.stdin.read(1)
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
+        return key
+
     def calc_lane_lines(self, lines):
         """ 
     
@@ -192,6 +217,18 @@ class Lane_Detector():
                         1, (255, 0, 0), 2)
             cv2.imshow('video_window', self.cv_image)
 
+    def e_stop(self):
+        """ Stop robot if space bar is pressed
+        """
+        self.key = self.getKey()
+        print("Key: " + self.key)
+        # if space bar is pressed, stop the robot
+        if self.key == ' ':
+            print("SPACE BAR PRESSED")
+            self.twt.linear.x = Vector3(x=0.0, y=0.0, z=0.0)
+            self.twt.angular.z = Vector3(x=0.0, y=0.0, z=0.0)
+            self.pub.publish(self.twt)
+
     def approaching_horizontal_border(self):
         """ Use the horizontal line to inform whether we need to turn or not. 
         """
@@ -223,28 +260,33 @@ class Lane_Detector():
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rot_speed)
             else: 
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed)
+            self.pub.publish(self.twt)
 
     def drive_straight(self):
         """
         """
         self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
         self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
+        self.pub.publish(self.twt)
    
     def adjust_leftward(self):
         """ Adjust leftward while still driving forward
         """
         self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
         self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed/2)
+        self.pub.publish(self.twt)
  
     def adjust_rightward(self):
         """ Adjust righward while still driving forward
         """
         self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
         self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rot_speed/2)
+        self.pub.publish(self.twt)
 
     def drive_within_the_lane(self):
         """ Evaluate the robot's position in the lane to see if we need to make any adjustments
         """
+
         # if it needs to turn left, the center dot is to the left
         center_threshold = 20
         lane_range = [  self.img_shape[1]/2-center_threshold, 
@@ -265,6 +307,8 @@ class Lane_Detector():
             print("too left")
             self.adjust_rightward()
 
+        # if self.lane_center_pt.x
+
     def drive(self):
         """ This function determines how the robot will react and drive.        
         """
@@ -279,13 +323,9 @@ class Lane_Detector():
             self.drive_within_the_lane()
         else:
             self.drive_straight()
-        return self.twt
+        self.pub.publish(self.twt)
         
-    def run_lane_detector(self, image, twt: Twist, orientation, position):
-        self.cv_image = image
-        self.twt = twt
-        self.orientation = orientation
-        self.position = position
+    def run_lane_detector(self, cv_image, ):
         self.reset_lines_detected()
 
         if self.cv_image is not None:
@@ -300,8 +340,6 @@ class Lane_Detector():
                     # print(self.lane_center_line.slope)
                     # print(self.lane_center_line)
                 self.visualize_lanes()
-        # return the correct twist values
-        return self.drive()
 
             
     def loop_wrapper(self):
@@ -311,7 +349,10 @@ class Lane_Detector():
         cv2.namedWindow('video_window', 0)
         cv2.resizeWindow('video_window', 800, 500)
         while True:
+            
+
             self.run_lane_detector()
+            self.drive()
             self.run_loop()
             time.sleep(0.1)
 
@@ -327,6 +368,9 @@ class Lane_Detector():
                 cv2.setMouseCallback('video_window', self.update_lane_detection_area)
                 cv2.waitKey(0)
                 self.calibrate_mask = self.hough.update_lane_mask()
+            
+            # check for e stop
+            # self.e_stop()
             
     
 
