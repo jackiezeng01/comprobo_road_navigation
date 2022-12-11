@@ -281,9 +281,10 @@ class Lane_Detector():
             self.drive_straight()
         return self.twt
         
-    def run_lane_detector(self, image, twt: Twist, orientation, position):
+    def run_lane_detector(self, image, lin_speed, rot_speed, orientation, position):
         self.cv_image = image
-        self.twt = twt
+        self.lin_speed = lin_speed
+        self.rot_speed = rot_speed
         self.orientation = orientation
         self.position = position
         self.reset_lines_detected()
