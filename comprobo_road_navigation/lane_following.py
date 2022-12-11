@@ -223,28 +223,24 @@ class Lane_Detector():
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rot_speed)
             else: 
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed)
-            self.pub.publish(self.twt)
 
     def drive_straight(self):
         """
         """
         self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
         self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
-        self.pub.publish(self.twt)
    
     def adjust_leftward(self):
         """ Adjust leftward while still driving forward
         """
         self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
         self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed/2)
-        self.pub.publish(self.twt)
  
     def adjust_rightward(self):
         """ Adjust righward while still driving forward
         """
         self.twt.linear = Vector3(x=self.lin_speed, y=0.0, z=0.0)
         self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rot_speed/2)
-        self.pub.publish(self.twt)
 
     def drive_within_the_lane(self):
         """ Evaluate the robot's position in the lane to see if we need to make any adjustments
@@ -283,7 +279,7 @@ class Lane_Detector():
             self.drive_within_the_lane()
         else:
             self.drive_straight()
-        self.pub.publish(self.twt)
+        return self.twt
         
     def run_lane_detector(self, image, twt: Twist, orientation, position):
         self.cv_image = image
@@ -304,6 +300,8 @@ class Lane_Detector():
                     # print(self.lane_center_line.slope)
                     # print(self.lane_center_line)
                 self.visualize_lanes()
+        # return the correct twist values
+        return self.drive()
 
             
     def loop_wrapper(self):
@@ -314,7 +312,6 @@ class Lane_Detector():
         cv2.resizeWindow('video_window', 800, 500)
         while True:
             self.run_lane_detector()
-            self.drive()
             self.run_loop()
             time.sleep(0.1)
 
