@@ -16,6 +16,7 @@ from geometry_msgs.msg import Twist, Vector3, Quaternion
 # from comprobo_road_navigation.shape_classification import ShapeClassifier
 from comprobo_road_navigation.obstacle_avoidance import ObstacleAvoidance
 from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
+from comprobo_road_navigation.lane_following import Lane_Detector
 
 class NeatoCar(Node):
     """ The BallTracker is a Python object that encompasses a ROS node 
@@ -41,9 +42,12 @@ class NeatoCar(Node):
         self.start_orientation = None
         self.orientation = None
         self.position = None
-        self.rotation_speed = 0.6
+        self.rotation_speed = 0.3
+        self.linear_speed = 0.05
         # self.shape_classifier = ShapeClassifier()
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
+        self.lane_detector = Lane_Detector()
+        self.velocity = None
         self.turning_flag = False
         # self.velocity = Twist()
         thread = Thread(target=self.loop_wrapper)
@@ -68,8 +72,15 @@ class NeatoCar(Node):
             We are using a separate thread to run the loop_wrapper to work around
             issues with single threaded executors in ROS2 """
         while True:
+            if self.orientation and self.position:
+                self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
+                if self.velocity is None:
+                    self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
+                if self.velocity is not None:
+                    self.pub.publish(self.velocity)
+                    
             self.run_loop()
-            time.sleep(1)
+            time.sleep(0.1)
         # cv2.destroyAllWindows()
 
     def turn_ninety_deg(self):
@@ -84,20 +95,19 @@ class NeatoCar(Node):
 
     def run_loop(self):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
-        velocity = Twist()
-        velocity.linear.x = float(0.1)
+        
+        # self.velocity.linear.x = self.linear_speed
         # if the turning flag is set to 1, the robot will turn until it reaches 90 degrees
-        if self.turning_flag:
-            if self.start_orientation is None:
-                self.start_orientation = self.orientation
-            velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
-            velocity.angular = self.turn_ninety_deg()
-            print("vel",velocity)
-        if self.orientation and self.position:
-            velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, velocity, self.orientation, self.position)
-
-        self.pub.publish(velocity)
-            
+        # if self.turning_flag:
+        #     if self.start_orientation is None:
+        #         self.start_orientation = self.orientation
+        #     self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
+        #     self.velocity.angular = self.turn_ninety_deg()
+        #     print("vel",self.velocity)
+       if not self.cv_image is None:
+            cv2.imshow('video_window', self.cv_image)
+            cv2.waitKey(5)
+            # print(self.calibrate_mask)
 
         # # self.obstacle_avoidance.find_lane_centers(self.cv_image)
         # if self.obstacle_avoidance.cv_image is not None:
