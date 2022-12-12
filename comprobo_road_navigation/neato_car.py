@@ -91,13 +91,16 @@ class NeatoCar(Node):
                     self.velocity.linear = Vector3(x=0.1, y=0.0, z=0.0)
                     self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                     instruction = self.instructions[0]
-                    print("instruction:", instruction)
+                    # print("instruction:", instruction)
                     reached, self.cv_image = self.apriltag_detector.run_apriltag_detector(self.cv_image, self.raw_cv_image, instruction)
                     print("reached: ", reached)
                     if reached == 1:
+                        print("here")
                         self.instructions.pop(0)
                         self.turning_flag = True
-                        self.turning_behaviour(instruction[1])
+                        # self.turning_behaviour(instruction[1])
+                if self.turning_flag is True:
+                    self.turning_behaviour(instruction[1])
                 if self.velocity is not None:
                     self.pub.publish(self.velocity)
                     
