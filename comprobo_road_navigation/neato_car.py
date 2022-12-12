@@ -9,7 +9,6 @@ from nav_msgs.msg import Odometry
 from copy import deepcopy
 from cv_bridge import CvBridge
 import cv2
-import math
 import comprobo_road_navigation.helper_functions as helper_functions
 import numpy as np
 from geometry_msgs.msg import Twist, Vector3, Quaternion
@@ -43,15 +42,16 @@ class NeatoCar(Node):
         self.ranges = []
         # rotation stuff
         self.start_orientation = None
+        self.start_time = None
         self.orientation = None
         self.position = None
         self.rotation_speed = 0.3
-        self.linear_speed = 0.05
-        start_node = (3, 5)
-        end_node = (0, 2)
+        self.linear_speed = 0.1
+        start_node = (2, 1)
+        end_node = (4, 0)
         self.pathplanner = PathPlanning(start_node, end_node)
         self.instructions = self.pathplanner.generate_instructions()
-        print(self.instructions)
+        print("instructions: ", self.instructions)
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
         self.apriltag_detector = AprilTagDetector()
         self.lane_detector = Lane_Detector()
@@ -83,6 +83,7 @@ class NeatoCar(Node):
             We are using a separate thread to run the loop_wrapper to work around
             issues with single threaded executors in ROS2 """
         while True and self.instructions != []:
+            # print("looping")
             if self.orientation and self.position:
                 self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
                 if self.velocity is None and self.turning_flag is False:
@@ -96,7 +97,6 @@ class NeatoCar(Node):
                     print("reached: ", reached)
                     if reached == 1:
                         print("here")
-                        self.instructions.pop(0)
                         self.turning_flag = True
                         # self.turning_behaviour(instruction[1])
                 if self.turning_flag is True:
@@ -120,11 +120,11 @@ class NeatoCar(Node):
     
     def turning(self, direction):
         if self.drive_straight:
-            if math.dist([self.start_position.x, self.start_position.y], [self.position.x, self.position.y]) > 0.4:
+            if time.time() - self.start_time > 7:
                 print("her1")
                 self.drive_straight = False
                 self.turn = True
-                self.start_orientation = None
+                self.start_time = None
                 self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
                 self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                 return self.velocity
@@ -134,14 +134,15 @@ class NeatoCar(Node):
                 self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                 return self.velocity
         if self.turn:
-            if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2 - 0.1:
+            if time.time() - self.start_time >= 5:
                 print("her3")
                 self.drive_straight = True
                 self.turn = False
-                self.start_orientation = None
+                self.start_time = None
                 self.turning_flag = False
                 self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
                 self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
+                self.instructions.pop(0)
                 return self.velocity 
             else:  
                 print("her4")               
@@ -155,10 +156,11 @@ class NeatoCar(Node):
     def turning_behaviour(self, direction):
         if self.turning_flag:
             self.velocity = Twist()
-            if self.start_orientation is None:
-                print("resetting")
-                self.start_orientation = self.orientation
-                self.start_position = self.position 
+            if self.start_time is None:
+                print("resetting time")
+                self.start_time = time.time()
+                # self.start_orientation = self.orientation
+                # self.start_position = self.position 
             self.velocity = self.turning(direction)
 
     def run_loop(self):
