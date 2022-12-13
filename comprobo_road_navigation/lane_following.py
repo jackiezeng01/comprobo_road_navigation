@@ -13,26 +13,12 @@ TODO:
 - Horizontal needs to be a certain length to be classified as correct
 '''
 import cv2
-import matplotlib.pyplot as plt
 import math
-import os
-import pandas as pd
 import time
 import numpy as np
 
-import tty
-import select
-import sys
-import termios
-
-from rclpy.node import Node
 from cv_bridge import CvBridge
-from threading import Thread
-from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist, Vector3
-from nav_msgs.msg import Odometry
-from copy import deepcopy
-from scipy.stats import linregress
 import rclpy
 from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
 

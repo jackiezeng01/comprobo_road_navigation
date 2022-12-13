@@ -1,4 +1,3 @@
-from comprobo_road_navigation.path_planning import PathPlanning
 import cv2
 import apriltag
 
@@ -11,10 +10,10 @@ class AprilTagDetector():
                                         2: 2300,
                                         3: 2600,
                                         4: 2300,
-                                        5: 2600,
+                                        5: 3000,
                                         6: 2300,
                                         7: 2600,
-                                        8: 2600}
+                                        8: 5500}
         self.cv_image = None
         self.raw_cv_image = None
 
@@ -22,6 +21,9 @@ class AprilTagDetector():
         """
         Detects apriltags in the camera view and returns them as a
         dictionary with tag IDs as keys and sizes as values
+
+        Also marks detected apriltags on the cv window.
+        Target apriltag in green, others in yellow.
         """
         gray = cv2.cvtColor(self.raw_cv_image, cv2.COLOR_BGR2GRAY)
         options = apriltag.DetectorOptions(families="tag36h11")
@@ -33,7 +35,7 @@ class AprilTagDetector():
         for r in results:
             tagID = r.tag_id
             # if this is the apriltag we are looking for, draw in green, otherwise yellow
-            color = (0, 255, 0)
+            color = (255, 255, 0)
             if instruction[0] == tagID:
                 color = (0, 255, 0)
             # extract the bounding box (x, y)-coordinates for the AprilTag
@@ -59,13 +61,24 @@ class AprilTagDetector():
         return apriltags
 
     def run_apriltag_detector(self, cv_image, raw_cv_image, instruction):
+        """
+        Looks for apritags in the camera input.
+
+        Return
+        0: we have not reached the target apriltag
+        1: we have reached the target apriltag and should turn as per the instructions
+        2: we have reached the target apriltag and should go straight as per the instructions
+        """
         self.cv_image = cv_image
         self.raw_cv_image = raw_cv_image
         aprilTag_to_look_for = instruction[0]
         size_at_which_to_stop = self.apriltag_stop_distances.get(aprilTag_to_look_for)
         aprilTags = self.detect_apriltags(instruction)
         if aprilTag_to_look_for in aprilTags.keys():
-            # if we have reached the apriltag we are looking, return 1
+            # we have reached the apriltag we are looking for if the tag size reaches its threshold
             if aprilTags.get(aprilTag_to_look_for) >= size_at_which_to_stop:
-                return 1, self.cv_image
+                if instruction[1] == 'right' or instruction[1] == 'left':
+                    return 1, self.cv_image
+                else: # straight instruction
+                    return 2, self.cv_image
         return 0, self.cv_image

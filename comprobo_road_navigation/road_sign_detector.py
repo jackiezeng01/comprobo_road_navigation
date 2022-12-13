@@ -3,11 +3,9 @@ from threading import Thread
 from rclpy.node import Node
 import time
 from sensor_msgs.msg import Image
-from copy import deepcopy
 from cv_bridge import CvBridge
 import cv2
-import numpy as np
-from geometry_msgs.msg import Twist, Vector3
+from geometry_msgs.msg import Twist
 
 class RoadSignDetector(Node):
     """ The BallTracker is a Python object that encompasses a ROS node 
@@ -92,14 +90,14 @@ class RoadSignDetector(Node):
     def id_and_draw_shapes(self, frame, cnts):
         for c in cnts:
             # Identify shape
-            if cv2.contourArea(c) > 35:
+            if cv2.contourArea(c) > 55:
                 shape = self.detect_shape(c)
                 # Find centroid and label shape name
                 M = cv2.moments(c)
                 if M["m00"] != 0:
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
-                    cv2.putText(frame, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,255,12), 2)
+                    cv2.putText(frame, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,4,12), 2)
         cv2.drawContours(frame, cnts, -1, (0,255,0), 3)
 
     
@@ -121,7 +119,7 @@ class RoadSignDetector(Node):
         while True:
             self.binary_image = cv2.inRange(self.cv_image, (self.blue_lower_bound,self.green_lower_bound,self.red_lower_bound), (self.blue_upper_bound,self.green_upper_bound,self.red_upper_bound))
             contours = self.get_contours(self.binary_image)
-            self.id_and_draw_shapes(self.binary_image, contours)
+            self.id_and_draw_shapes(self.cv_image, contours)
             self.run_loop()
             time.sleep(0.1)
 

@@ -15,6 +15,7 @@ from geometry_msgs.msg import Twist, Vector3, Quaternion
 # from comprobo_road_navigation.shape_classification import ShapeClassifier
 from comprobo_road_navigation.obstacle_avoidance import ObstacleAvoidance
 from comprobo_road_navigation.path_planning import PathPlanning
+from comprobo_road_navigation.roadsign_detector import RoadSignDetector
 from comprobo_road_navigation.apriltag_detector import AprilTagDetector
 from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
 from comprobo_road_navigation.lane_following import Lane_Detector
@@ -47,16 +48,18 @@ class NeatoCar(Node):
         self.position = None
         self.rotation_speed = 0.3
         self.linear_speed = 0.1
-        start_node = (2, 1)
+        start_node = (3, 5)
         end_node = (4, 0)
         self.pathplanner = PathPlanning(start_node, end_node)
         self.instructions = self.pathplanner.generate_instructions()
         print("instructions: ", self.instructions)
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
         self.apriltag_detector = AprilTagDetector()
+        self.roadsign_detector = RoadSignDetector()
         self.lane_detector = Lane_Detector()
         self.velocity = None
         self.turning_flag = False
+        self.stopping_flag = False
         self.drive_straight = True
         self.turn = False
         # self.velocity = Twist()
@@ -86,7 +89,7 @@ class NeatoCar(Node):
             # print("looping")
             if self.orientation and self.position:
                 self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
-                if self.velocity is None and self.turning_flag is False:
+                if self.velocity is None and self.turning_flag is False and self.turning_flag is False:
                     # self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
                     self.velocity = Twist()
                     self.velocity.linear = Vector3(x=0.1, y=0.0, z=0.0)
@@ -94,19 +97,50 @@ class NeatoCar(Node):
                     instruction = self.instructions[0]
                     # print("instruction:", instruction)
                     reached, self.cv_image = self.apriltag_detector.run_apriltag_detector(self.cv_image, self.raw_cv_image, instruction)
+                    self.roadsign_to_obey = self.roadsign_detector.run_roadsign_detector(self.cv_image, self.raw_cv_image)
                     print("reached: ", reached)
+                    # If we have reached an apriltag which has a turn instruction
+                    if reached == 1:
+                        self.turning_flag = True
+                    # If we have reached an apriltag which has a go straight instruction
+                    if reached == 2:
+                        self.instructions.pop(0)
+
+                    """
+                    Integrating roadsign detection
+                    
+                    # If we have reached an apriltag which has a turn instruction
                     if reached == 1:
                         print("here")
-                        self.turning_flag = True
-                        # self.turning_behaviour(instruction[1])
+                        action = self.get_roadsign_action()
+                        if (action == 'stop'):
+                            self.stopping_flag = True
+                        else:
+                            self.turning_flag = True
+                    # If we have reached an apriltag which has a go straight instruction
+                    if reached == 2:
+                        action = self.get_roadsign_action()
+                        if (action == 'stop'):
+                            self.stopping_flag = True
+                    """
                 if self.turning_flag is True:
                     self.turning_behaviour(instruction[1])
+                if self.stopping_flag is True:
+                    self.stopping_behaviour()
                 if self.velocity is not None:
                     self.pub.publish(self.velocity)
                     
             self.run_loop()
             time.sleep(0.1)
         # cv2.destroyAllWindows()
+
+    def get_roadsign_action(self):
+        if self.roadsign_to_obey == []:
+            return 'go'
+        elif 'Yield' in self.roadsign_to_obey or 'Stop' in self.roadsign_to_obey:
+            return 'stop'
+        return self.roadsign_detector.get_traffic_light_action(self.raw_cv_image)
+            
 
     def turn_ninety_deg(self):
         # set rotation speed 
@@ -153,8 +187,19 @@ class NeatoCar(Node):
                     self.velocity.angular = Vector3(x=0.0, y=0.0, z= abs(self.rotation_speed))
                 return self.velocity
 
+    def stopping(self):
+        if time.time() - self.start_time < 5:
+            print("stop function here 1")
+            self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
+            self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
+        else:
+            print("stop function here 2")
+            self.start_time = None
+            self.stopping_flag = False
+
+
     def turning_behaviour(self, direction):
-        if self.turning_flag:
+        if self.turning_flag: # TODO I think this if else statement is redundant cuz we only call this function is turning flag is true
             self.velocity = Twist()
             if self.start_time is None:
                 print("resetting time")
@@ -162,6 +207,17 @@ class NeatoCar(Node):
                 # self.start_orientation = self.orientation
                 # self.start_position = self.position 
             self.velocity = self.turning(direction)
+            """
+            TODO ^^^ do we need to have self.turning return a velocity?
+            it's all in the same class, so we could possibly just modify self.velocity from within the self.turning function
+            """
+    
+    def stopping_behaviour(self):
+        # TODO test that this works
+        self.velocity = Twist()
+        if self.start_time is None:
+            print("resetting time")
+            self.start_time = time.time()
 
     def run_loop(self):
         # NOTE: only do cv2.imshow and cv2.waitKey in this function 
