@@ -4,7 +4,7 @@ import heapq as hq
 from itertools import permutations
 
 class PathPlanning():
-    def __init__(self, tag_map) -> None:
+    def __init__(self, start_node, end_node) -> None:
         """
         Initialize an instance of path planning. 
 
@@ -18,6 +18,9 @@ class PathPlanning():
         self.path: a list where the nodes to visit will be stores 
         self.instructions: a list where the instructions will be stored
         """
+        self.tag_map = {(2, 0): {(3, 0): 6, (1, 0): 6, (2, 1): 5}, 
+            (2, 2): { (2, 1): 4, (2, 3): 4, (1, 2): 3},
+            (0, 2): 2, (2, 5): 8}
         self.map_grid = [1, 1, 1, 1, 1, 0, 
         1, 0, 1, 0, 1, 0,
         1, 1, 1, 0, 1, 1,
@@ -27,8 +30,8 @@ class PathPlanning():
         1, 1, 1, 1, 1, 0]
         self.graph = self.map_to_graph(6, 7)
         self.path = []
-        self.instructions = []
-        nx.set_node_attributes(self.graph, tag_map, 'tag')
+        nx.set_node_attributes(self.graph, self.tag_map, 'tag')
+        self.node_to_node(start_node, end_node)
 
     def map_to_graph(self, width, height):
         """
@@ -154,6 +157,7 @@ class PathPlanning():
         containing the tag number and either 'left', 'right', or 'straight' 
         to self.instructions
         """
+        instructions = []
         for i, node in enumerate(self.path[1:-1]): 
             previous_node = self.path[i]
             next_node = self.path[i + 2]
@@ -189,47 +193,45 @@ class PathPlanning():
 
                 # no change in direction, go straight
                 if (x_next == x_prev) & (y_next == y_prev):
-                    self.instructions.append((tag, 'straight'))
+                    instructions.append((tag, 'straight'))
                 # we used to be going x so now we're going y
                 elif dir == 'x':
                     # if we're facing a positive direction
                     if facing > 0:
                         # turn right if we want to go positive
                         if y_next > 0:
-                            self.instructions.append((tag, 'right'))
+                            instructions.append((tag, 'right'))
                         # turn left if we want to go negative
                         else: 
-                            self.instructions.append((tag, 'left'))
+                            instructions.append((tag, 'left'))
                     # if we're facing a negative direction
                     else: 
                         # turn left if we want to go negative
                         if y_next < 0: 
-                            self.instructions.append((tag, 'right'))
+                            instructions.append((tag, 'right'))
                         else: 
-                            self.instructions.append((tag, 'left'))
+                            instructions.append((tag, 'left'))
                 elif dir == 'y':
                     # if we're facing a positive direction
                     if facing > 0:
                         # turn right if we want to go positive
                         if x_next > 0:
-                            self.instructions.append((tag, 'left'))
+                            instructions.append((tag, 'left'))
                         # turn left if we want to go negative
                         else: 
-                            self.instructions.append((tag, 'right'))
+                            instructions.append((tag, 'right'))
                     # if we're facing a negative direction
                     else: 
                         # turn left if we want to go negative
                         if x_next < 0: 
-                            self.instructions.append((tag, 'left'))
+                            instructions.append((tag, 'left'))
                         else: 
-                            self.instructions.append((tag, 'right'))
+                            instructions.append((tag, 'right'))
+        return instructions
 
 
-tag_map = {(2, 0): {(3, 0): 6, (1, 0): 6, (2, 1): 5}, 
-            (2, 2): { (2, 1): 4, (2, 3): 4, (1, 2): 3},
-            (0, 2): 2, (2, 5): 8}
-plan_path = PathPlanning(tag_map)
-plan_path.node_to_node((4, 0), (0, 5))
-print(plan_path.path)
-plan_path.generate_instructions()
-print(plan_path.instructions)
+# plan_path = PathPlanning(tag_map)
+# plan_path.node_to_node((4, 0), (0, 5))
+# print(plan_path.path)
+# plan_path.generate_instructions()
+# print(plan_path.instructions)

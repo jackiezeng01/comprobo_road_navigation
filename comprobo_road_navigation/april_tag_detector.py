@@ -33,15 +33,10 @@ class AprilTagDetector(Node):
                                         6: 2300,
                                         7: 2600,
                                         8: 2600}
-        tag_map = {((1, 0), (2, 0)): 6, ((2, 0), (3, 0)): 6, ((2, 0), (2, 1)): 5,
-                    ((0, 1), (0, 2)): 2, ((0, 2), (0, 3)): 2, ((1, 2), (2, 2)): 3,
-                    ((2, 1), (2, 2)): 4, ((2, 2), (2, 3)): 4, ((0, 4), (0, 5)): 1,
-                    ((2, 5), (3, 5)): 8}
-        self.pathplanner = PathPlanning(tag_map)
+
         start_node = (3, 5)
         end_node = (0, 2)
-        self.pathplanner.node_to_node(start_node, end_node)
-        print("path: ", self.pathplanner.path)
+        self.pathplanner = PathPlanning(start_node, end_node)
         self.pathplanner.generate_instructions()
         print("instructions: ", self.pathplanner.instructions)
         self.state = Neato_state.FOLLOWING_INSTRUCTION
@@ -126,7 +121,6 @@ class AprilTagDetector(Node):
             # print(aprilTags)
             if self.state == Neato_state.TURNING:
                 current_instruction = self.instructions[0]
-                # current_instruction = self.instructions[0]
                 print("current_instruction: ", current_instruction)
                 aprilTag_to_look_for = current_instruction[0]
                 action_at_aprilTag = current_instruction[1]
