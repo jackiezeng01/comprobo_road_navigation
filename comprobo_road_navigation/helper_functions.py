@@ -158,7 +158,8 @@ class HoughLineDetection:
         # Converts frame to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         # Apply the gaussian noise kernel to smooth the image.
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
+        # blur = cv2.GaussianBlur(gray, (5,5), 0)
+        blur = cv2.GaussianBlur(gray,(9,9), 0)
         canny = cv2.Canny(blur, 50, 100)
         return canny
 
@@ -179,6 +180,9 @@ class HoughLineDetection:
         canny = self.do_canny_edge_detection(img)
         segment = self.mask_for_lane_region(canny)
         lines = cv2.HoughLinesP(segment, 1, np.pi / 180, 100, None, 50, 10)
+        # detect shorter lines: 
+        lines = cv2.HoughLinesP(segment, 1, np.pi / 180, 100, None, 50, 10)
+
         return lines
 
     def draw_hough_lines(self, img, lines):

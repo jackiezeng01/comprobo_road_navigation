@@ -9,8 +9,9 @@ ros2 launch neato_node2 bringup.py host:=192.168.16.50
 
 TODO: 
 - thw 90 degree turn is not really 90 degrees bc the odometry is ass
-
+- have shorter lines 
 - Horizontal needs to be a certain length to be classified as correct
+- Check that the lane lines are behind the horizontal line in order to count them. 
 '''
 import cv2
 import matplotlib.pyplot as plt
@@ -35,6 +36,13 @@ from copy import deepcopy
 from scipy.stats import linregress
 import rclpy
 from helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
+import enum 
+ 
+# creating enumerations using class
+class Position_in_Lane(enum.Enum):
+    centered = 1
+    too_right = 2
+    too_left = 3
 
 class Lane_Detector(Node):
     """ Finds the lanes in the image. """
@@ -54,10 +62,12 @@ class Lane_Detector(Node):
         self.rot_speed = 0.3
         self.lin_speed = 0.05
         
-        self.reset_lines_detected()
+        self.reset()
         self.calibrate_mask = False
         # slope must between neg and pos threshold to be considered horizontal
-        self.horizontal_slope_threshold = 0.01
+        self.horizontal_slope_threshold = 0.05
+        # last lane seen before seeing the horizontal lines
+        self.last_lane_before_horizontal = None
         self.lane_slope_threshold = [0.5, 2]
         # if the horizontal line is below 400, it is too close to the robot and we should tunr
         self.horizontal_y_threshold = 500
@@ -69,40 +79,35 @@ class Lane_Detector(Node):
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
-    def reset_lines_detected(self):
+    def reset(self):
         # Left and right lines of the lane
         self.left = None
+        self.left_min_y = None
         self.right = None
+        self.right_min_y = None
         self.horizontal = None
         self.lane_center_pt = None
         self.lane_center_line = None
+        self.neato_position_in_lane = None
         
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
             called cv_image for subsequent processing """
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         self.cv_image = undistort_img(cv_image)
-        self.reset_lines_detected()
+        self.reset()
 
     def process_odom(self, msg):
         self.position = msg.pose.pose.position
         self.orientation = euler_from_quaternion(msg.pose.pose.orientation)
     
-    def getKey(self):
-        # get user's current key press
-        tty.setraw(sys.stdin.fileno())
-        select.select([sys.stdin], [], [], 0)
-        key = sys.stdin.read(1)
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
-        return key
-
     def calc_lane_lines(self, lines):
         """ 
     
         """
         # Empty arrays to store the coordinates of the left and right lines
         left, right, horizontal = [], [], []
-
+        left_y, right_y = [], []
         # Loops through every detected line
         for line in lines:
             # Reshapes line from 2D array to 1D array
@@ -115,23 +120,35 @@ class Lane_Detector(Node):
             elif line.is_within_lane_slope_threshold(self.lane_slope_threshold):
                 if line.slope < 0:
                     left.append((line.slope, line.y_intercept))
+                    left_y.extend((line.pt1.y,line.pt2.y))
                 else:
                     right.append((line.slope, line.y_intercept))
-
+                    right_y.extend((line.pt1.y,line.pt2.y))
+        
         if left != []:
             # Averages out all the values for left and right into a single slope and y-intercept value for each line
             left_avg = np.average(left, axis = 0)
-            print("left slope: ", left_avg[0])
+            # print("left slope: ", left_avg[0])
+            self.left_min_y = min(left_y)
             self.left = self.line_from_params(left_avg)
+
         if right != []:
             right_avg = np.average(right, axis = 0)
-            print("right slope: ", right_avg[0])
+            self.right_min_y = min(right_y)
+            # print("right slope: ", right_avg[0])
             self.right = self.line_from_params(right_avg)
+
         if horizontal != []:
             horizontal_avg = np.average(horizontal, axis = 0)
             print("horizontal avg:", horizontal_avg)
             self.horizontal = self.line_from_params(horizontal_avg)
-
+        
+            if self.left:
+                if self.left_min_y > self.horizontal.pt1.y:
+                    self.last_lane_before_horizontal = "left"
+            elif self.right:
+                if self.right_min_y > self.horizontal.pt1.y: 
+                    self.last_lane_before_horizontal = "right"
 
     def calc_lane_intersection(self):
         ''' Given the left and right lanes, figure out where the center of the lanes is.
@@ -158,8 +175,8 @@ class Lane_Detector(Node):
         avg_intercept = np.average(self.left.y_intercept + self.right.y_intercept)
         params = avg_slope, avg_intercept
         # Calculate center line
-        self.lane_center_line = self.line_from_params(params, self.lane_center_pt)
-
+        # self.lane_center_line = self.line_from_params(params, self.lane_center_pt)
+# 
     def line_from_params(self, params:list, pt:Point = None) -> Line:
         ''' Calculate the two points that make up a line segment from the inputs. If just the default params are given, the line is calculated with hard coded y values that are convenient for visualization purposes. If a point on the line is given, a short line segment centered around the point will be retruned. 
 
@@ -197,8 +214,8 @@ class Lane_Detector(Node):
             self.right.draw(self.cv_image)
         if self.lane_center_pt is not None:
             cv2.circle(self.cv_image, self.lane_center_pt.xy, radius=10, color=(255, 0, 0), thickness=-1)
-        if self.lane_center_line is not None:
-            self.lane_center_line.draw(self.cv_image) 
+        # if self.lane_center_line is not None:
+        #     self.lane_center_line.draw(self.cv_image) 
         if self.horizontal is not None:
             self.horizontal.draw(self.cv_image)
     
@@ -217,18 +234,6 @@ class Lane_Detector(Node):
                         1, (255, 0, 0), 2)
             cv2.imshow('video_window', self.cv_image)
 
-    def e_stop(self):
-        """ Stop robot if space bar is pressed
-        """
-        self.key = self.getKey()
-        print("Key: " + self.key)
-        # if space bar is pressed, stop the robot
-        if self.key == ' ':
-            print("SPACE BAR PRESSED")
-            self.twt.linear.x = Vector3(x=0.0, y=0.0, z=0.0)
-            self.twt.angular.z = Vector3(x=0.0, y=0.0, z=0.0)
-            self.pub.publish(self.twt)
-
     def approaching_horizontal_border(self):
         """ Use the horizontal line to inform whether we need to turn or not. 
         """
@@ -242,10 +247,17 @@ class Lane_Detector(Node):
             return True
 
     def get_turn_direction(self):
-        pass
+        """ Get turn direction from the horizontal lines
+        - if last seen lane is left, turn right
+
+        """
+        if self.last_lane_before_horizontal == "right":
+            return "left"
+        elif self.last_lane_before_horizontal == "left":
+            return "right"
     
     # TODO: make a utils.py file and pull from there instead.
-    def turn_ninety_deg(self, dir: str = "left"):
+    def turn_ninety_deg(self, dir: int):
         """ Turn the neato 90 degrees left or right based on the direction of the speed. 
         """
         print("in turn 90 degrees function")
@@ -256,10 +268,10 @@ class Lane_Detector(Node):
                 self.turning_flag = 0
                 self.start_orientation = None
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
+            elif(dir == "left"):
+                self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed)
             elif(dir == "right"):
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rot_speed)
-            else: 
-                self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed)
             self.pub.publish(self.twt)
 
     def drive_straight(self):
@@ -286,47 +298,81 @@ class Lane_Detector(Node):
     def drive_within_the_lane(self):
         """ Evaluate the robot's position in the lane to see if we need to make any adjustments
         """
-
-        # if it needs to turn left, the center dot is to the left
-        center_threshold = 20
-        lane_range = [  self.img_shape[1]/2-center_threshold, 
-                        self.img_shape[1]/2+center_threshold]
-        x = self.lane_center_pt.x
-        print(lane_range)
-        print(x)
-        if lane_range[0] <= x <= lane_range[1]:
-            # centered
-            print("centered")
+        if self.neato_position_in_lane == Position_in_Lane.centered:
             self.drive_straight()
-        elif x < lane_range[0]:
-            # pointing too far right
-            print("too right")
+        elif self.neato_position_in_lane == Position_in_Lane.too_right:
             self.adjust_leftward()
-        else:
-            # pointing too far left
-            print("too left")
+        elif self.neato_position_in_lane == Position_in_Lane.too_left:
             self.adjust_rightward()
+        else:
+            self.drive_straight()
 
-        # if self.lane_center_pt.x
+    def evaluate_neato_position_in_lane(self):
+        """ Evaluate neato's position in the lane lines. If 2 lane lines are 
+            detected, this is evaluated based on the calculated center point. 
+            If one lane line is detected, this is determined based on the slope 
+            of the lane line
+        """
+        expected_slope = 0.75
+        threshold = 0.05
+
+        if self.lane_center_pt:
+            # if it needs to turn left, the center dot is to the left
+            center_threshold = 20
+            lane_range = [  self.img_shape[1]/2-center_threshold, 
+                            self.img_shape[1]/2+center_threshold]
+            x = self.lane_center_pt.x
+            if lane_range[0] <= x <= lane_range[1]:
+                pos = Position_in_Lane.centered
+            elif x < lane_range[0]:
+                pos = Position_in_Lane.too_right
+            else:
+                pos = Position_in_Lane.too_left
+        elif self.horizontal:
+            pos = Position_in_Lane.centered
+        elif self.left:
+            slope = abs(self.left.slope)
+            # if the slope is close to 0, it is too left
+            if expected_slope-threshold < slope < expected_slope+threshold:
+                pos = Position_in_Lane.centered
+            if expected_slope-threshold >= slope:
+                print("left slope: ", self.left.slope)
+                pos = Position_in_Lane.too_right
+            elif slope >= expected_slope+threshold:
+                print("left slope: ", self.left.slope)
+                pos = Position_in_Lane.too_left
+        elif self.right:
+            # too small it is too right
+            slope = abs(self.right.slope)
+            if expected_slope-threshold < slope < expected_slope+threshold:
+                pos = Position_in_Lane.centered
+            if expected_slope-threshold >= slope:
+                print("right slope: ", self.right.slope)
+                pos = Position_in_Lane.too_left
+            elif slope >= expected_slope-threshold:
+                print("right slope: ", self.right.slope)
+                pos = Position_in_Lane.too_right
+        else: 
+            pos = Position_in_Lane.centered
+        self.neato_position_in_lane = pos
+        print(self.neato_position_in_lane)
 
     def drive(self):
         """ This function determines how the robot will react and drive.        
         """
         if self.approaching_horizontal_border():
             print("NEED TO TURN HERE")
-            # turn_dir = self.get_turn_direction()
-            turn_dir = "left"
+            turn_dir = self.get_turn_direction()
             self.turning_flag = 1
             self.start_orientation = self.orientation
             self.turn_ninety_deg(turn_dir)
-        elif self.lane_center_pt is not None:
+        else: 
+            self.evaluate_neato_position_in_lane()
             self.drive_within_the_lane()
-        else:
-            self.drive_straight()
         self.pub.publish(self.twt)
         
-    def run_lane_detector(self, cv_image, ):
-        self.reset_lines_detected()
+    def run_lane_detector(self):
+        self.reset()
 
         if self.cv_image is not None:
             lines = self.hough.do_hough_line_transform(self.cv_image)
@@ -336,12 +382,8 @@ class Lane_Detector(Node):
                 # only find intersection if we see two lines lol
                 if self.left and self.right:
                     self.calc_road_center()
-                    # print("center_pt", self.lane_center_pt)
-                    # print(self.lane_center_line.slope)
-                    # print(self.lane_center_line)
                 self.visualize_lanes()
 
-            
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
             We are using a separate thread to run the loop_wrapper to work around
@@ -349,8 +391,6 @@ class Lane_Detector(Node):
         cv2.namedWindow('video_window', 0)
         cv2.resizeWindow('video_window', 800, 500)
         while True:
-            
-
             self.run_lane_detector()
             self.drive()
             self.run_loop()
@@ -367,12 +407,7 @@ class Lane_Detector(Node):
                 self.hough.polygon_pts = []
                 cv2.setMouseCallback('video_window', self.update_lane_detection_area)
                 cv2.waitKey(0)
-                self.calibrate_mask = self.hough.update_lane_mask()
-            
-            # check for e stop
-            # self.e_stop()
-            
-    
+                self.calibrate_mask = self.hough.update_lane_mask()    
 
 # if __name__ == '__main__':
 #     node = Lane_Detector("/camera/image_raw")
