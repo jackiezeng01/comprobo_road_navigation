@@ -105,7 +105,6 @@ class ObstacleAvoidance():
     def detect_contours(self, image):
         self.cv_image = image
         if self.cv_image is not None:
-            print("found image")
             # frame = self.cv_image
             # Convert to HSV format and color threshold
             hsv = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
@@ -121,14 +120,11 @@ class ObstacleAvoidance():
             # find centroids and potentially filter contours by area
             areas = self.find_areas(contours)        
             self.filter_contours_find_centroids(contours, areas)
-            if len(self.centroids > 1):
-                return True
-            else:
-                return False
-
+            for centroid in self.centroids:
+                cv2.circle(self.cv_image, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
 
     def find_slope(self, image):
-        _ = self.detect_contours(image)
+        self.detect_contours(image)
 
         # detect outliers
         # true_centroids = self.detect_outliers(centroids)
