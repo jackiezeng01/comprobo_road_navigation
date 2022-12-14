@@ -139,7 +139,8 @@ class HoughLineDetection:
         height = img_shape[0]-100
         height = 600
         # Polygon that create a mask of the lane
-        self.lane_mask = np.array([[(253, 265), (8, 511), (8, 759), (1020, 757), (1018, 499), (729, 280)]])
+        self.lane_mask = np.array([[(236, 224), (4, 461), (4, 663), (975, 663), (973, 410), (784, 258)]])
+        # self.lane_mask = np.array([[(253, 265), (8, 511), (8, 759), (1020, 757), (1018, 499), (729, 280)]])
         # self.lane_mask = np.array([[(5, 513), (1020, 535), (763, 283), (239, 292)]])
         # self.lane_mask = np.array([[(0, height), (1024, height), (607, 307), (400, 300)]])
 
@@ -152,10 +153,26 @@ class HoughLineDetection:
         print("updating lane mask")
         return False
 
+    def mask_for_red(self, img):
+        """
+        """
+        # Converting the image to hsv
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        
+        # define range of red color in HSV
+        lower_red = np.array([160,50,50])
+        upper_red = np.array([180,255,255])
+            
+        # Threshold the HSV image using inRange function to get only red colors
+        mask = cv2.inRange(hsv, lower_red, upper_red)
+        return mask
+
+
     def do_canny_edge_detection(self, img):
         """ Apply OpenCV's canny edge detection to find the edges in the image
         """
         # Converts frame to grayscale
+        # gray = img
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         # Apply the gaussian noise kernel to smooth the image.
         # blur = cv2.GaussianBlur(gray, (5,5), 0)
@@ -177,6 +194,7 @@ class HoughLineDetection:
     def do_hough_line_transform(self, img):
         """ Apply OpenCv's probablistic hough line transform to detect lines in the image
         """
+        # red_masked = self.mask_for_red(img)
         canny = self.do_canny_edge_detection(img)
         segment = self.mask_for_lane_region(canny)
         lines = cv2.HoughLinesP(segment, 1, np.pi / 180, 100, None, 50, 10)

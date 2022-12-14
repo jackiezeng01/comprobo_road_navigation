@@ -35,7 +35,7 @@ from nav_msgs.msg import Odometry
 from copy import deepcopy
 from scipy.stats import linregress
 import rclpy
-from helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
+from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
 import enum 
  
 # creating enumerations using class
@@ -74,13 +74,6 @@ class Lane_Detector():
         self.horizontal_y_threshold = 500
         # turns true if it has seen horizontal line
         self.num_horizontal_lines_detected = 0
-
-        self.sub_image = self.create_subscription(Image, image_topic, self.process_image, 10)
-        self.sub_odom = self.create_subscription(Odometry, '/odom', self.process_odom, 10)
-        self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
-
-        thread = Thread(target=self.loop_wrapper)
-        thread.start()
 
     def reset(self):
         # Left and right lines of the lane
@@ -356,10 +349,10 @@ class Lane_Detector():
             if expected_slope-threshold < slope < expected_slope+threshold:
                 pos = Position_in_Lane.centered
             if expected_slope-threshold >= slope:
-                print("right slope: ", self.right.slope)
+                # print("right slope: ", self.right.slope)
                 pos = Position_in_Lane.too_left
             elif slope >= expected_slope+threshold:
-                print("right slope: ", self.right.slope)
+                # print("right slope: ", self.right.slope)
                 pos = Position_in_Lane.too_right
         else: 
             pos = Position_in_Lane.centered
@@ -400,7 +393,6 @@ class Lane_Detector():
                     self.calc_road_center()
                 self.visualize_lanes()
         return self.drive(), self.cv_image
-
 
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
