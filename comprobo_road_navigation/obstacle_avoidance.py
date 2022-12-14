@@ -121,7 +121,7 @@ class ObstacleAvoidance():
             # find centroids and potentially filter contours by area
             areas = self.find_areas(contours)        
             self.filter_contours_find_centroids(contours, areas)
-            if len(self.centroids > 1):
+            if len(self.centroids) > 1:
                 return True
             else:
                 return False

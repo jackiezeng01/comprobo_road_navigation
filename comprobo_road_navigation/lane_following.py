@@ -57,8 +57,9 @@ class Lane_Detector():
         self.twt = Twist()
         # rotation stuff
         self.start_orientation = None
+        self.turning_flag = 0
         self.turn_start_time = None
-        self.ninety_deg_turn_time = 5.2 #sec
+        self.ninety_deg_turn_time = 5 #sec
         
         self.rot_speed = 0.3
         self.lin_speed = 0.05
@@ -71,7 +72,7 @@ class Lane_Detector():
         self.last_lane_before_horizontal = None
         self.lane_slope_threshold = [0.5, 2]
         # if the horizontal line is below 400, it is too close to the robot and we should tunr
-        self.horizontal_y_threshold = 500
+        self.horizontal_y_threshold = 425
         # turns true if it has seen horizontal line
         self.num_horizontal_lines_detected = 0
 
@@ -140,15 +141,17 @@ class Lane_Detector():
 
         if horizontal != []:
             horizontal_avg = np.average(horizontal, axis = 0)
-            print("horizontal avg:", horizontal_avg)
+            # print("horizontal avg:", horizontal_avg)
             self.horizontal = self.line_from_params(horizontal_avg)
         
-            if self.left and self.left_min_y:
-                if self.left_min_y > self.horizontal.pt1.y:
-                    self.last_lane_before_horizontal = "left"
-            elif self.right and self.right_min_y:
-                if self.right_min_y > self.horizontal.pt1.y: 
-                    self.last_lane_before_horizontal = "right"
+        if self.left and self.left_min_y:
+            if self.left_min_y > self.horizontal_y_threshold-50:
+            # if self.left_min_y > self.horizontal.pt1.y:
+                self.last_lane_before_horizontal = "left"
+        elif self.right and self.right_min_y:
+            # if self.right_min_y > self.horizontal.pt1.y: 
+            if self.right_min_y > self.horizontal_y_threshold-50: 
+                self.last_lane_before_horizontal = "right"
 
     def calc_lane_intersection(self):
         ''' Given the left and right lanes, figure out where the center of the lanes is.
@@ -244,6 +247,7 @@ class Lane_Detector():
         pt = self.horizontal.get_point_at_x(x)
         self.num_horizontal_lines_detected += 1
         # If the point y is below the threshold, the line is too close and we need to turn. 
+        print("horizontal pt.y: ", pt.y)
         if pt.y > self.horizontal_y_threshold:
             return True
 
@@ -258,22 +262,28 @@ class Lane_Detector():
             return "right"
     
     # TODO: make a utils.py file and pull from there instead.
-    def turn_ninety_deg(self, dir: int):
+    def turn_ninety_deg(self):
         """ Turn the neato 90 degrees left or right based on the direction of the speed. 
         """
-        print("in turn 90 degrees function")
+        # print("in turn 90 degrees function")
+        print(self.turn_dir)
         self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
         # set rotation speed 
-        while (self.turning_flag == 1):
+        if (self.turning_flag == 1):
+            # print("turning flag is 1")
             # if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
             if abs(self.turn_start_time - time.time()) >= self.ninety_deg_turn_time:
                 self.turning_flag = 0
                 self.start_orientation = None
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
-            elif(dir == "left"):
+                print("stop turn")
+            elif(self.turn_dir == "left"):
+                print("turning left")
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rot_speed)
-            elif(dir == "right"):
+            elif(self.turn_dir == "right"):
+                print("turning right")
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rot_speed)
+
 
     def drive_straight(self):
         """
@@ -364,12 +374,13 @@ class Lane_Detector():
         """
         if self.approaching_horizontal_border():
             print("NEED TO TURN HERE")
-            turn_dir = self.get_turn_direction()
+            self.turn_dir = self.get_turn_direction()
             self.turning_flag = 1
             self.turn_start_time = time.time()
             self.start_orientation = self.orientation
             self.num_horizontal_lines_detected = 0
-            self.turn_ninety_deg(turn_dir)
+        if self.turning_flag:
+            self.turn_ninety_deg()
         else: 
             self.evaluate_neato_position_in_lane()
             self.drive_within_the_lane()

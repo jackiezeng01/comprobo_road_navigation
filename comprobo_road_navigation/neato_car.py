@@ -47,8 +47,8 @@ class NeatoCar(Node):
         self.orientation = None
         self.position = None
         self.rotation_speed = 0.3
-        self.linear_speed = 0.1
-        start_node = (0, 0)
+        self.linear_speed = 0.07
+        start_node = (4, 1)
         end_node = (3, 5)
         self.pathplanner = PathPlanning(start_node, end_node)
         self.instructions = self.pathplanner.generate_instructions()
@@ -86,30 +86,33 @@ class NeatoCar(Node):
         """ This function takes care of calling the run_loop function repeatedly.
             We are using a separate thread to run the loop_wrapper to work around
             issues with single threaded executors in ROS2 """
-        while True and self.instructions != []:
+        while True:
             # print("looping")
             if self.orientation and self.position:
-                if self.in_double_lane is False:
-                    self.in_double_lane = self.obstacle_avoidance.detect_contours(self.cv_image)
-                else:
-                    print("entering double lane section")
-                    self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
-                if self.velocity is None and self.turning_flag is False:
+                # if self.in_double_lane is False:
+                #     self.in_double_lane = self.obstacle_avoidance.detect_contours(self.cv_image)
+                # else:
+                #     print("entering double lane section")
+                #     self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
+                # if self.velocity is None and self.turning_flag is False:
+                if self.turning_flag is False:
+
                     self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
-                    self.velocity = Twist()
-                    self.velocity.linear = Vector3(x=0.1, y=0.0, z=0.0)
-                    self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
-                    instruction = self.instructions[0]
+                    # self.velocity = Twist()
+                    # self.velocity.linear = Vector3(x=0.1, y=0.0, z=0.0)
+                    # self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                     # print("instruction:", instruction)
-                    reached, self.cv_image = self.apriltag_detector.run_apriltag_detector(self.cv_image, self.raw_cv_image, instruction)
-                    # self.roadsign_to_obey = self.roadsign_detector.run_roadsign_detector(self.cv_image, self.raw_cv_image)
-                    print("reached: ", reached)
-                    # If we have reached an apriltag which has a turn instruction
-                    if reached == 1:
-                        self.turning_flag = True
-                    # If we have reached an apriltag which has a go straight instruction
-                    if reached == 2:
-                        self.instructions.pop(0)
+                    if self.instructions != []:
+                        instruction = self.instructions[0]
+                        reached, self.cv_image = self.apriltag_detector.run_apriltag_detector(self.cv_image, self.raw_cv_image, instruction)
+                        # self.roadsign_to_obey = self.roadsign_detector.run_roadsign_detector(self.cv_image, self.raw_cv_image)
+                        print("reached: ", reached)
+                        # If we have reached an apriltag which has a turn instruction
+                        if reached == 1:
+                            self.turning_flag = True
+                        # If we have reached an apriltag which has a go straight instruction
+                        if reached == 2:
+                            self.instructions.pop(0)
 
                     """
                     Integrating roadsign detection
