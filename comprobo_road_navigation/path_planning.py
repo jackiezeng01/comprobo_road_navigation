@@ -20,7 +20,8 @@ class PathPlanning():
         """
         self.tag_map = {(2, 0): {(3, 0): 6, (1, 0): 6, (2, 1): 5}, 
             (2, 2): { (2, 1): 4, (2, 3): 4, (1, 2): 3},
-            (0, 2): 2, (2, 5): 8}
+            (0, 2): 2, (2, 5): 8, (4, 5): 7, (4, 6): 0, 
+            (0, 6): 9, (0, 5): 1}
         self.map_grid = [1, 1, 1, 1, 1, 0, 
         1, 0, 1, 0, 1, 0,
         1, 1, 1, 0, 1, 1,
@@ -121,9 +122,10 @@ class PathPlanning():
                 next_node = edge[1]
                 if next_node not in closed:
                     self.graph.nodes[next_node]['parent'] = curr_node
-                    if next_node == end_node: 
-                        path.append(next_node)
+                    if next_node == end_node:
                         path_node = next_node
+                        if self.path[-1] != next_node:
+                            path.append(next_node)
                         break
 
                     if self.graph.nodes[next_node]['dist'] > next_node_dist:

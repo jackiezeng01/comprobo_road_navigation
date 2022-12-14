@@ -12,7 +12,7 @@ class AprilTagDetector():
                                         4: 2300,
                                         5: 3000,
                                         6: 2100,
-                                        7: 2600,
+                                        7: 2100,
                                         8: 5500}
         self.cv_image = None
         self.raw_cv_image = None
@@ -53,7 +53,7 @@ class AprilTagDetector():
             (cX, cY) = (int(r.center[0]), int(r.center[1]))
             cv2.circle(self.cv_image, (cX, cY), 5, color, -1)
             size = pow(int(ptB[0]) - int(ptA[0]), 2)
-            cv2.putText(self.cv_image, str(tagID), (ptA[0], ptA[1] + 50),
+            cv2.putText(self.cv_image, "id: " + str(tagID) + ", instruction: " + instruction[1], (ptA[0], ptA[1] + 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
             cv2.putText(self.cv_image, str(size), (ptB[0], ptB[1] - 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)

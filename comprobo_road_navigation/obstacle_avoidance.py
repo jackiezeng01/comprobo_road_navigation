@@ -85,8 +85,8 @@ class ObstacleAvoidance():
         return np.array(true_centroids)
 
     def detect_obstacles(self, ranges):
-        dist_threshold = 0.4
-        point_threshold = 10
+        dist_threshold = 0.6
+        point_threshold = 5
         ob_points = 0
         obstacle = False
         if len(ranges):
@@ -149,12 +149,12 @@ class ObstacleAvoidance():
         return slope
 
     def find_turn_direction(self, slope):
-        if slope > 0:
+        if slope > -0.2:
             print("turning left")
             return 1 # left ( direction of angular speed)
         else:
             print("turning right")
-            return -1 # right
+            return 1 # right
 
 
     def change_lanes(self):

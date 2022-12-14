@@ -367,7 +367,7 @@ class Lane_Detector():
         else: 
             pos = Position_in_Lane.centered
         self.neato_position_in_lane = pos
-        print(self.neato_position_in_lane)
+        # print(self.neato_position_in_lane)
 
     def drive(self):
         """ This function determines how the robot will react and drive.        

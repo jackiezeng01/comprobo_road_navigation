@@ -50,9 +50,10 @@ class NeatoCar(Node):
         self.last_instruction = None
         self.rotation_speed = 0.3
         self.linear_speed = 0.1
-        start_node = (0, 0)
-        end_node = (3, 5)
+        start_node = (0, 5)
+        end_node = (2, 2)
         self.pathplanner = PathPlanning(start_node, end_node)
+        self.pathplanner.node_to_node((2, 2), (5, 4))
         self.instructions = self.pathplanner.generate_instructions()
         print("instructions: ", self.instructions)
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
@@ -98,11 +99,6 @@ class NeatoCar(Node):
                     print("entering double lane")
                     self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
                 if self.turning_flag is False:
-                    self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
-                    # self.velocity = Twist()
-                    # self.velocity.linear = Vector3(x=0.1, y=0.0, z=0.0)
-                    # self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
-                    # print("instruction:", instruction)
                     if self.instructions != []:
                         instruction = self.instructions[0]
                         reached, self.cv_image = self.apriltag_detector.run_apriltag_detector(self.cv_image, self.raw_cv_image, instruction)
@@ -115,6 +111,8 @@ class NeatoCar(Node):
                         if reached == 2:
                             self.last_instruction = self.instructions[0][0]
                             self.instructions.pop(0)
+                    self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
+
 
                     """
                     Integrating roadsign detection
@@ -164,8 +162,8 @@ class NeatoCar(Node):
     
     def turning(self, direction):
         if self.drive_straight:
-            if time.time() - self.start_time > 6:
-                print("her1")
+            if time.time() - self.start_time > 5:
+                # print("her1")
                 self.drive_straight = False
                 self.turn = True
                 self.start_time = None
@@ -173,13 +171,13 @@ class NeatoCar(Node):
                 self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                 return self.velocity
             else:
-                print("her2")
+                # print("her2")
                 self.velocity.linear = Vector3(x=self.linear_speed, y=0.0, z=0.0)
                 self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                 return self.velocity
         if self.turn:
             if time.time() - self.start_time >= 5:
-                print("her3")
+                # print("her3")
                 self.drive_straight = True
                 self.turn = False
                 self.start_time = None
@@ -190,7 +188,7 @@ class NeatoCar(Node):
                 self.instructions.pop(0)
                 return self.velocity 
             else:  
-                print("her4")               
+                # print("her4")               
                 self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
                 if direction == "right":
                     self.velocity.angular = Vector3(x=0.0, y=0.0, z= -abs(self.rotation_speed))
@@ -241,9 +239,11 @@ class NeatoCar(Node):
         #     self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
         #     self.velocity.angular = self.turn_ninety_deg()
         #     print("vel",self.velocity)
-        if not self.cv_image is None and self.image_obstacles is not None:
-            cv2.imshow('obst window', self.image_obstacles)
-            # cv2.imshow('video_window', self.cv_image)
+        if self.cv_image is not None or self.image_obstacles is not None:
+            if self.cv_image is not None:
+                cv2.imshow('video_window', self.cv_image)
+            if self.image_obstacles is not None:
+                cv2.imshow('obst window', self.image_obstacles)
             cv2.waitKey(5)
             # print(self.calibrate_mask)
 
