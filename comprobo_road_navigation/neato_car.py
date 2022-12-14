@@ -62,6 +62,7 @@ class NeatoCar(Node):
         self.stopping_flag = False
         self.drive_straight = True
         self.turn = False
+        self.in_double_lane = False
         # self.velocity = Twist()
         thread = Thread(target=self.loop_wrapper)
         thread.start()
@@ -88,7 +89,11 @@ class NeatoCar(Node):
         while True and self.instructions != []:
             # print("looping")
             if self.orientation and self.position:
-                self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
+                if self.in_double_lane is False:
+                    self.in_double_lane = self.obstacle_avoidance.detect_contours(self.cv_image)
+                else:
+                    print("entering double lane section")
+                    self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
                 if self.velocity is None and self.turning_flag is False:
                     self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
                     self.velocity = Twist()

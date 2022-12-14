@@ -26,6 +26,8 @@ class ObstacleAvoidance():
         self.start_position = None
         self.orientation = None
         self.position = None
+        self.centroids = []
+        self.filtered_contours = []
         self.first_turn = True
         self.drive_straight = False
         self.second_turn = True
@@ -39,8 +41,6 @@ class ObstacleAvoidance():
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
     def filter_contours_find_centroids(self, contours, areas):
-        centroids = []
-        filtered_contours = []
         for idx,contour in enumerate(contours):        
             # check the area
             if areas[idx] > 200 and areas[idx] < 4000:
@@ -49,9 +49,9 @@ class ObstacleAvoidance():
                 cy = int(M['m01']/M['m00'])
                 # check that it is below some point because the lane lines are 
                 # in the bottom half of image               
-                centroids.append([cx, cy])
-                filtered_contours.append(contour)
-        return filtered_contours, centroids
+                self.centroids.append([cx, cy])
+                self.filtered_contours.append(contour)
+
 
     def find_areas(self, contours):
         areas = []
@@ -102,8 +102,7 @@ class ObstacleAvoidance():
                     return obstacle
         return obstacle
 
-
-    def find_slope(self, image):
+    def detect_contours(self, image):
         self.cv_image = image
         if self.cv_image is not None:
             print("found image")
@@ -121,37 +120,37 @@ class ObstacleAvoidance():
             
             # find centroids and potentially filter contours by area
             areas = self.find_areas(contours)        
-            filtered_contours, centroids = self.filter_contours_find_centroids(contours, areas)
-
-            arr = np.array(centroids)
-            max_idx = np.argmax(arr, axis=0)
-            _, max_y = arr[max_idx]
-            if max_y[0] < self.frame_width /2:
-                slope = 1
+            self.filter_contours_find_centroids(contours, areas)
+            if len(self.centroids > 1):
+                return True
             else:
-                slope = -1
+                return False
 
-            # detect outliers
-            # true_centroids = self.detect_outliers(centroids)
-            # find slope
-            slope = 0
-            if len(centroids)>= 2:
-                slope = self.find_line_fit(np.array(centroids))
-                print(f'Slope: {slope}')
 
-            # arr = np.array(centroids)
-            # max_idx = np.argmax(arr, axis=0)
-            # _, max_y = arr[max_idx]
-            # if max_y[0] < self.frame_width /2:
-            #     slope = 1
-            # else:
-            #     slope = -1
+    def find_slope(self, image):
+        _ = self.detect_contours(image)
 
-            # draw centroids
-            for centroid in centroids:
-                cv2.circle(self.cv_image, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
+        # detect outliers
+        # true_centroids = self.detect_outliers(centroids)
+        # find slope
+        slope = 0
+        if len(self.centroids)>= 2:
+            slope = self.find_line_fit(np.array(self.centroids))
+            print(f'Slope: {slope}')
 
-            return slope
+        # arr = np.array(centroids)
+        # max_idx = np.argmax(arr, axis=0)
+        # _, max_y = arr[max_idx]
+        # if max_y[0] < self.frame_width /2:
+        #     slope = 1
+        # else:
+        #     slope = -1
+
+        # draw centroids
+        for centroid in self.centroids:
+            cv2.circle(self.cv_image, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
+
+        return slope
 
     def find_turn_direction(self, slope):
         if slope > 0:
