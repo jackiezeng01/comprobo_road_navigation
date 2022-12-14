@@ -124,8 +124,9 @@ class PathPlanning():
                     self.graph.nodes[next_node]['parent'] = curr_node
                     if next_node == end_node:
                         path_node = next_node
-                        if self.path[-1] != next_node:
-                            path.append(next_node)
+                        if len(self.path) > 0:
+                            if (self.path[-1] != next_node):
+                                path.append(next_node)
                         break
 
                     if self.graph.nodes[next_node]['dist'] > next_node_dist:
