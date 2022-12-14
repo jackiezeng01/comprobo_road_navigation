@@ -11,7 +11,7 @@ class AprilTagDetector():
                                         3: 2600,
                                         4: 2300,
                                         5: 3000,
-                                        6: 2300,
+                                        6: 2100,
                                         7: 2600,
                                         8: 5500}
         self.cv_image = None
