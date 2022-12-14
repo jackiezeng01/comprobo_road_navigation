@@ -4,6 +4,7 @@ import os
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist, Vector3, Quaternion
 import math
+import time
 
 class ObstacleAvoidance():
     '''
@@ -33,6 +34,7 @@ class ObstacleAvoidance():
         self.second_turn = True
         self.rotation_speed = 0.4
         self.straight_speed = 0.1
+        self.start_time = None
         self.twt = Twist()
     
     def process_image(self, msg):
@@ -48,9 +50,10 @@ class ObstacleAvoidance():
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 # check that it is below some point because the lane lines are 
-                # in the bottom half of image               
-                self.centroids.append([cx, cy])
-                self.filtered_contours.append(contour)
+                # in the bottom half of image    
+                if cy < 100:           
+                    self.centroids.append([cx, cy])
+                    self.filtered_contours.append(contour)
 
 
     def find_areas(self, contours):
@@ -85,8 +88,8 @@ class ObstacleAvoidance():
         return np.array(true_centroids)
 
     def detect_obstacles(self, ranges):
-        dist_threshold = 0.6
-        point_threshold = 5
+        dist_threshold = 0.5
+        point_threshold = 10
         ob_points = 0
         obstacle = False
         if len(ranges):
@@ -149,20 +152,20 @@ class ObstacleAvoidance():
         return slope
 
     def find_turn_direction(self, slope):
-        if slope > -0.2:
-            print("turning left")
+        if slope > -0:
+            # print("turning left")
             return 1 # left ( direction of angular speed)
         else:
-            print("turning right")
+            # print("turning right")
             return 1 # right
 
 
     def change_lanes(self):
             # set rotation speed 
             if self.first_turn:            
-                if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+                if time.time() - self.start_time > 3:
                     self.first_turn = False
-                    self.start_orientation = None
+                    self.start_time = None
                     self.drive_straight = True
                     self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
                     self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
@@ -172,10 +175,10 @@ class ObstacleAvoidance():
                     self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rotation_speed)
                     return self.twt
             if self.drive_straight:
-                if math.dist([self.start_position.x, self.start_position.y], [self.position.x, self.position.y]) > 0.3:
+                if time.time() - self.start_time > 4:
                     self.drive_straight = False
                     self.second_turn = True
-                    self.start_orientation = None
+                    self.start_time = None
                     self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
                     self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
                     return self.twt
@@ -184,9 +187,9 @@ class ObstacleAvoidance():
                     self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
                     return self.twt
             if self.second_turn:
-                if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+                if time.time() - self.start_time > 3:
                     self.second_turn = False
-                    self.start_orientation = None
+                    self.start_time = None
                     self.change_lanes_flag = False
                     self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
                     self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
@@ -202,11 +205,11 @@ class ObstacleAvoidance():
         self.orientation = orientation
         self.position = position
         if self.change_lanes_flag:
-            if self.start_orientation is None:
-                self.start_orientation = self.orientation
-                self.start_position = self.position 
+            if self.start_time is None:
+                self.start_time = time.time()
+                # self.start_position = self.position 
             self.twt = self.change_lanes() 
-            return self.twt 
+            return self.twt, self.cv_image
         else:
             obstacle_detected = self.detect_obstacles(ranges)
             if obstacle_detected:
@@ -217,11 +220,11 @@ class ObstacleAvoidance():
                     print("Direction", self.direction)
                     self.rotation_speed = self.direction * self.rotation_speed
                     self.change_lanes_flag = True
-                    return None
+                    return None, self.cv_image
                 else:
-                    return None
+                    return None, self.cv_image
             else:
-                return None
+                return None, self.cv_image
         
 
         
