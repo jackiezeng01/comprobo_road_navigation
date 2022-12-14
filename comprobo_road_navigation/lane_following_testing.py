@@ -8,10 +8,10 @@ Start NEATO command:
 ros2 launch neato_node2 bringup.py host:=192.168.16.50
 
 TODO: 
-- thw 90 degree turn is not really 90 degrees bc the odometry is ass
-- have shorter lines 
+- the 90 degree turn is not really 90 degrees bc the odometry is ass
 - Horizontal needs to be a certain length to be classified as correct
-- Check that the lane lines are behind the horizontal line in order to count them. 
+- Filter the image for red lines because it is getting confused with the grid lanes. 
+- implement start ignoring turns as soon as you detect a horizontal line
 '''
 import cv2
 import matplotlib.pyplot as plt
@@ -58,6 +58,8 @@ class Lane_Detector(Node):
         self.twt = Twist()
         # rotation stuff
         self.start_orientation = None
+        self.turn_start_time = None
+        self.ninety_deg_turn_time = 5.2 #sec
         
         self.rot_speed = 0.3
         self.lin_speed = 0.05
@@ -65,12 +67,14 @@ class Lane_Detector(Node):
         self.reset()
         self.calibrate_mask = False
         # slope must between neg and pos threshold to be considered horizontal
-        self.horizontal_slope_threshold = 0.05
+        self.horizontal_slope_threshold = 0.15
         # last lane seen before seeing the horizontal lines
         self.last_lane_before_horizontal = None
         self.lane_slope_threshold = [0.5, 2]
         # if the horizontal line is below 400, it is too close to the robot and we should tunr
         self.horizontal_y_threshold = 500
+        # turns true if it has seen horizontal line
+        self.num_horizontal_lines_detected = 0
 
         self.sub_image = self.create_subscription(Image, image_topic, self.process_image, 10)
         self.sub_odom = self.create_subscription(Odometry, '/odom', self.process_odom, 10)
@@ -130,12 +134,16 @@ class Lane_Detector(Node):
             left_avg = np.average(left, axis = 0)
             # print("left slope: ", left_avg[0])
             self.left_min_y = min(left_y)
+            # print(left_y)
+            # print("left_min: ", self.left_min_y)
             self.left = self.line_from_params(left_avg)
 
         if right != []:
             right_avg = np.average(right, axis = 0)
             self.right_min_y = min(right_y)
             # print("right slope: ", right_avg[0])
+            # print(right_y)
+            # print("right_min: ", self.right_min_y)
             self.right = self.line_from_params(right_avg)
 
         if horizontal != []:
@@ -143,10 +151,10 @@ class Lane_Detector(Node):
             print("horizontal avg:", horizontal_avg)
             self.horizontal = self.line_from_params(horizontal_avg)
         
-            if self.left:
+            if self.left and self.left_min_y:
                 if self.left_min_y > self.horizontal.pt1.y:
                     self.last_lane_before_horizontal = "left"
-            elif self.right:
+            elif self.right and self.right_min_y:
                 if self.right_min_y > self.horizontal.pt1.y: 
                     self.last_lane_before_horizontal = "right"
 
@@ -176,7 +184,7 @@ class Lane_Detector(Node):
         params = avg_slope, avg_intercept
         # Calculate center line
         # self.lane_center_line = self.line_from_params(params, self.lane_center_pt)
-# 
+
     def line_from_params(self, params:list, pt:Point = None) -> Line:
         ''' Calculate the two points that make up a line segment from the inputs. If just the default params are given, the line is calculated with hard coded y values that are convenient for visualization purposes. If a point on the line is given, a short line segment centered around the point will be retruned. 
 
@@ -242,6 +250,7 @@ class Lane_Detector(Node):
         # Get the point on the line at the x center of the img frame. 
         x = self.img_shape[1]/2
         pt = self.horizontal.get_point_at_x(x)
+        self.num_horizontal_lines_detected += 1
         # If the point y is below the threshold, the line is too close and we need to turn. 
         if pt.y > self.horizontal_y_threshold:
             return True
@@ -264,7 +273,8 @@ class Lane_Detector(Node):
         self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
         # set rotation speed 
         while (self.turning_flag == 1):
-            if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2-0.3:
+            # if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+            if abs(self.turn_start_time - time.time()) >= self.ninety_deg_turn_time:
                 self.turning_flag = 0
                 self.start_orientation = None
                 self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
@@ -316,7 +326,10 @@ class Lane_Detector(Node):
         expected_slope = 0.75
         threshold = 0.05
 
-        if self.lane_center_pt:
+        if (self.num_horizontal_lines_detected > 5):
+            pos = Position_in_Lane.centered
+            print("HOR DETECTED:", self.num_horizontal_lines_detected)
+        elif self.lane_center_pt:
             # if it needs to turn left, the center dot is to the left
             center_threshold = 20
             lane_range = [  self.img_shape[1]/2-center_threshold, 
@@ -328,6 +341,7 @@ class Lane_Detector(Node):
                 pos = Position_in_Lane.too_right
             else:
                 pos = Position_in_Lane.too_left
+            # if the robot sees a horizontal line consistently approaching, it should stop adjusting based on the lane lines and just head straight 
         elif self.horizontal:
             pos = Position_in_Lane.centered
         elif self.left:
@@ -349,7 +363,7 @@ class Lane_Detector(Node):
             if expected_slope-threshold >= slope:
                 print("right slope: ", self.right.slope)
                 pos = Position_in_Lane.too_left
-            elif slope >= expected_slope-threshold:
+            elif slope >= expected_slope+threshold:
                 print("right slope: ", self.right.slope)
                 pos = Position_in_Lane.too_right
         else: 
@@ -364,7 +378,9 @@ class Lane_Detector(Node):
             print("NEED TO TURN HERE")
             turn_dir = self.get_turn_direction()
             self.turning_flag = 1
+            self.turn_start_time = time.time()
             self.start_orientation = self.orientation
+            self.num_horizontal_lines_detected = 0
             self.turn_ninety_deg(turn_dir)
         else: 
             self.evaluate_neato_position_in_lane()
