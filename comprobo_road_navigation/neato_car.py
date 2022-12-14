@@ -89,7 +89,7 @@ class NeatoCar(Node):
             # print("looping")
             if self.orientation and self.position:
                 self.velocity = self.obstacle_avoidance.obstacle_behaviour(self.ranges, self.cv_image, self.orientation, self.position)
-                if self.velocity is None and self.turning_flag is False and self.turning_flag is False:
+                if self.velocity is None and self.turning_flag is False:
                     # self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
                     self.velocity = Twist()
                     self.velocity.linear = Vector3(x=0.1, y=0.0, z=0.0)
@@ -97,7 +97,7 @@ class NeatoCar(Node):
                     instruction = self.instructions[0]
                     # print("instruction:", instruction)
                     reached, self.cv_image = self.apriltag_detector.run_apriltag_detector(self.cv_image, self.raw_cv_image, instruction)
-                    self.roadsign_to_obey = self.roadsign_detector.run_roadsign_detector(self.cv_image, self.raw_cv_image)
+                    # self.roadsign_to_obey = self.roadsign_detector.run_roadsign_detector(self.cv_image, self.raw_cv_image)
                     print("reached: ", reached)
                     # If we have reached an apriltag which has a turn instruction
                     if reached == 1:
