@@ -2,6 +2,7 @@ import numpy as np
 import networkx as nx
 import heapq as hq
 from itertools import permutations
+import matplotlib.pyplot as plt
 
 class PathPlanning():
     def __init__(self, start_node, end_node) -> None:
@@ -234,7 +235,10 @@ class PathPlanning():
 
 
 # plan_path = PathPlanning(tag_map)
-# plan_path.node_to_node((4, 0), (0, 5))
+# nx.draw_spring(plan_path.graph, with_labels=True)
+plt.savefig("filename.png")
+#plt.savefig("filename.png")
+plan_path.node_to_node((4, 0), (0, 5))
 # print(plan_path.path)
 # plan_path.generate_instructions()
 # print(plan_path.instructions)
