@@ -3,11 +3,9 @@ from threading import Thread
 from rclpy.node import Node
 import time
 from sensor_msgs.msg import Image
-from copy import deepcopy
 from cv_bridge import CvBridge
 import cv2
-import numpy as np
-from geometry_msgs.msg import Twist, Vector3
+from geometry_msgs.msg import Twist
 
 class RoadSignDetector(Node):
     """ The BallTracker is a Python object that encompasses a ROS node 
@@ -23,12 +21,24 @@ class RoadSignDetector(Node):
 
         self.create_subscription(Image, image_topic, self.process_image, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
+        """
+        # road sign bounds
         self.red_lower_bound = 0
         self.red_upper_bound = 160
         self.green_lower_bound = 127
         self.green_upper_bound = 225
         self.blue_lower_bound = 0
         self.blue_upper_bound = 80
+        """
+
+        # traffic light green bounds
+        self.red_lower_bound = 0
+        self.red_upper_bound = 8
+        self.green_lower_bound = 42
+        self.green_upper_bound = 92
+        self.blue_lower_bound = 0
+        self.blue_upper_bound = 46
+
         self.shape_epsilon = 4
         thread = Thread(target=self.loop_wrapper)
         thread.start()
@@ -92,14 +102,14 @@ class RoadSignDetector(Node):
     def id_and_draw_shapes(self, frame, cnts):
         for c in cnts:
             # Identify shape
-            if cv2.contourArea(c) > 35:
+            if cv2.contourArea(c) > 150:
                 shape = self.detect_shape(c)
                 # Find centroid and label shape name
                 M = cv2.moments(c)
                 if M["m00"] != 0:
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
-                    cv2.putText(frame, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,255,12), 2)
+                    cv2.putText(frame, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,4,12), 2)
         cv2.drawContours(frame, cnts, -1, (0,255,0), 3)
 
     
@@ -118,10 +128,10 @@ class RoadSignDetector(Node):
         cv2.createTrackbar('blue lower bound', 'binary_window', self.blue_lower_bound, 255, self.set_blue_lower_bound)
         cv2.createTrackbar('blue upper bound', 'binary_window', self.blue_upper_bound, 255, self.set_blue_upper_bound)
         cv2.createTrackbar('shape epsilon', 'binary_window', self.shape_epsilon, 10, self.set_shape_epsilon)
-        while True:
+        while True and self.cv_image is not None:
             self.binary_image = cv2.inRange(self.cv_image, (self.blue_lower_bound,self.green_lower_bound,self.red_lower_bound), (self.blue_upper_bound,self.green_upper_bound,self.red_upper_bound))
             contours = self.get_contours(self.binary_image)
-            self.id_and_draw_shapes(self.binary_image, contours)
+            self.id_and_draw_shapes(self.cv_image, contours)
             self.run_loop()
             time.sleep(0.1)
 

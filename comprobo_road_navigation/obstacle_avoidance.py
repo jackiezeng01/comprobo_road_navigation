@@ -4,6 +4,7 @@ import os
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist, Vector3, Quaternion
 import math
+import time
 
 class ObstacleAvoidance():
     '''
@@ -26,11 +27,15 @@ class ObstacleAvoidance():
         self.start_position = None
         self.orientation = None
         self.position = None
+        self.centroids = []
+        self.filtered_contours = []
         self.first_turn = True
         self.drive_straight = False
         self.second_turn = True
         self.rotation_speed = 0.4
         self.straight_speed = 0.1
+        self.start_time = None
+        self.twt = Twist()
     
     def process_image(self, msg):
         """ Process image messages from ROS and stash them in an attribute
@@ -38,8 +43,6 @@ class ObstacleAvoidance():
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
     def filter_contours_find_centroids(self, contours, areas):
-        centroids = []
-        filtered_contours = []
         for idx,contour in enumerate(contours):        
             # check the area
             if areas[idx] > 200 and areas[idx] < 4000:
@@ -47,10 +50,11 @@ class ObstacleAvoidance():
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 # check that it is below some point because the lane lines are 
-                # in the bottom half of image               
-                centroids.append([cx, cy])
-                filtered_contours.append(contour)
-        return filtered_contours, centroids
+                # in the bottom half of image    
+                if cy < 100:           
+                    self.centroids.append([cx, cy])
+                    self.filtered_contours.append(contour)
+
 
     def find_areas(self, contours):
         areas = []
@@ -84,7 +88,7 @@ class ObstacleAvoidance():
         return np.array(true_centroids)
 
     def detect_obstacles(self, ranges):
-        dist_threshold = 0.6
+        dist_threshold = 0.5
         point_threshold = 10
         ob_points = 0
         obstacle = False
@@ -92,20 +96,18 @@ class ObstacleAvoidance():
             for angle in range(-15,15):
                 idx = (angle + 360) % 360
                 dist = ranges[idx]
-                print(f'Angle: {angle}, Distance: {dist}')
+                # print(f'Angle: {angle}, Distance: {dist}')
                 if dist < dist_threshold and dist != 0.0:
                     ob_points += 1
-                    print(f'Num points: {ob_points}')
+                    # print(f'Num points: {ob_points}')
                 if ob_points > point_threshold:
                     obstacle = True
                     return obstacle
         return obstacle
 
-
-    def find_slope(self, image):
+    def detect_contours(self, image):
         self.cv_image = image
         if self.cv_image is not None:
-            print("found image")
             # frame = self.cv_image
             # Convert to HSV format and color threshold
             hsv = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
@@ -120,82 +122,94 @@ class ObstacleAvoidance():
             
             # find centroids and potentially filter contours by area
             areas = self.find_areas(contours)        
-            filtered_contours, centroids = self.filter_contours_find_centroids(contours, areas)
-
-            # detect outliers
-            # true_centroids = self.detect_outliers(centroids)
-            # find slope
-            slope = 0
-            if len(centroids)>= 2:
-                slope = self.find_line_fit(np.array(centroids))
-                print(f'Slope: {slope}')
-
-            # draw centroids
-            for centroid in centroids:
+            self.filter_contours_find_centroids(contours, areas)
+            for centroid in self.centroids:
                 cv2.circle(self.cv_image, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
 
-            return slope
+    def find_slope(self, image):
+        self.detect_contours(image)
+
+        # detect outliers
+        # true_centroids = self.detect_outliers(centroids)
+        # find slope
+        slope = 0
+        if len(self.centroids)>= 2:
+            slope = self.find_line_fit(np.array(self.centroids))
+            print(f'Slope: {slope}')
+
+        # arr = np.array(centroids)
+        # max_idx = np.argmax(arr, axis=0)
+        # _, max_y = arr[max_idx]
+        # if max_y[0] < self.frame_width /2:
+        #     slope = 1
+        # else:
+        #     slope = -1
+
+        # draw centroids
+        for centroid in self.centroids:
+            cv2.circle(self.cv_image, (centroid[0], centroid[1]), 7, (0, 0, 255), -1)
+
+        return slope
 
     def find_turn_direction(self, slope):
-        if slope > 0:
-            print("turning left")
+        if slope > -0:
+            # print("turning left")
             return 1 # left ( direction of angular speed)
         else:
-            print("turning right")
-            return -1 # right
+            # print("turning right")
+            return 1 # right
 
 
     def change_lanes(self):
             # set rotation speed 
             if self.first_turn:            
-                if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+                if time.time() - self.start_time > 3:
                     self.first_turn = False
-                    self.start_orientation = None
+                    self.start_time = None
                     self.drive_straight = True
-                    self.velocity.linear.x = 0.0
-                    self.velocity.angular.z = 0.0
-                    return self.velocity
+                    self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
+                    self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
+                    return self.twt
                 else: 
-                    self.velocity.linear.x = 0.0
-                    self.velocity.angular.z = self.rotation_speed
-                    return self.velocity
+                    self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
+                    self.twt.angular = Vector3(x=0.0, y=0.0, z=self.rotation_speed)
+                    return self.twt
             if self.drive_straight:
-                if math.dist([self.start_position.x, self.start_position.y], [self.position.x, self.position.y]) > 0.3:
+                if time.time() - self.start_time > 4:
                     self.drive_straight = False
                     self.second_turn = True
-                    self.start_orientation = None
-                    self.velocity.linear.x = 0.0
-                    self.velocity.angular.z = 0.0
-                    return self.velocity
+                    self.start_time = None
+                    self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
+                    self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
+                    return self.twt
                 else:
-                    self.velocity.linear.x = self.straight_speed
-                    self.velocity.angular.z = 0.0
-                    return self.velocity
+                    self.twt.linear = Vector3(x=self.straight_speed, y=0.0, z=0.0)
+                    self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
+                    return self.twt
             if self.second_turn:
-                if abs(self.start_orientation.z - self.orientation.z) >= math.pi/2:
+                if time.time() - self.start_time > 3:
                     self.second_turn = False
-                    self.start_orientation = None
+                    self.start_time = None
                     self.change_lanes_flag = False
-                    self.velocity.linear.x = 0.0
-                    self.velocity.angular.z = 0.0
-                    return self.velocity
+                    self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
+                    self.twt.angular = Vector3(x=0.0, y=0.0, z=0.0)
+                    return self.twt
                 else: 
-                    self.velocity.linear.x = 0.0
-                    self.velocity.angular.z = -self.rotation_speed
-                    return self.velocity
+                    self.twt.linear = Vector3(x=0.0, y=0.0, z=0.0)
+                    self.twt.angular = Vector3(x=0.0, y=0.0, z=-self.rotation_speed)
+                    return self.twt
 
 
-    def obstacle_behaviour(self, ranges, image, velocity: Twist, orientation, position):
+    def obstacle_behaviour(self, ranges, image, orientation, position):
         "returns velocities, in the form of twist"
-        self.velocity = velocity
         self.orientation = orientation
         self.position = position
         if self.change_lanes_flag:
-            if self.start_orientation is None:
-                self.start_orientation = self.orientation
-                self.start_position = self.position 
-            self.velocity = self.change_lanes() 
-            return self.velocity       
+            if self.start_time is None:
+                self.start_time = time.time()
+                # self.start_position = self.position 
+            self.twt = self.change_lanes() 
+            return self.twt, self.cv_image
         else:
             obstacle_detected = self.detect_obstacles(ranges)
             if obstacle_detected:
@@ -204,12 +218,13 @@ class ObstacleAvoidance():
                 if slope:
                     self.direction = self.find_turn_direction(slope)
                     print("Direction", self.direction)
+                    self.rotation_speed = self.direction * self.rotation_speed
                     self.change_lanes_flag = True
-                    return self.velocity
+                    return None, self.cv_image
                 else:
-                    return self.velocity
+                    return None, self.cv_image
             else:
-                return self.velocity
+                return None, self.cv_image
         
 
         
