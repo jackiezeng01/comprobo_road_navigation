@@ -1,4 +1,6 @@
-'''
+''' This file handles the lane following behavior. 
+
+Resources referenced: 
 https://github.com/georgesung/road_lane_line_detection
 https://github.com/georgesung/advanced_lane_detection
 https://medium.com/geekculture/4-techniques-self-driving-cars-can-use-to-find-lanes-fcb6dd06b633
@@ -7,11 +9,6 @@ https://towardsdatascience.com/tutorial-build-a-lane-detector-679fd8953132#127c
 Start NEATO command: 
 ros2 launch neato_node2 bringup.py host:=192.168.16.50
 
-TODO: 
-- the 90 degree turn is not really 90 degrees bc the odometry is ass
-- Horizontal needs to be a certain length to be classified as correct
-- Filter the image for red lines because it is getting confused with the grid lanes. 
-- implement start ignoring turns as soon as you detect a horizontal line
 '''
 import cv2
 import matplotlib.pyplot as plt
@@ -37,13 +34,13 @@ import rclpy
 from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
 import enum 
  
-# creating enumerations using class
+# Enums for the position of the robot in the lane
 class Position_in_Lane(enum.Enum):
     centered = 1
     too_right = 2
     too_left = 3
 
-class Lane_Detector():
+class Lane_Follower():
     """ Finds the lanes in the image. """
 
     def __init__(self):
@@ -385,7 +382,7 @@ class Lane_Detector():
             self.drive_within_the_lane()
         return self.twt
         
-    def run_lane_detector(self, image, lin_speed, rot_speed, orientation, position):
+    def run_lane_follower(self, image, lin_speed, rot_speed, orientation, position):
         self.cv_image = image
         self.lin_speed = lin_speed
         self.rot_speed = rot_speed
@@ -411,7 +408,7 @@ class Lane_Detector():
         cv2.namedWindow('video_window', 0)
         cv2.resizeWindow('video_window', 800, 500)
         while True:
-            self.run_lane_detector()
+            self.run_lane_follower()
             self.run_loop()
             time.sleep(0.1)
 
@@ -434,7 +431,7 @@ class Lane_Detector():
 
 def main(args=None):
     rclpy.init(args=args)      # Initialize communication with ROS
-    node = Lane_Detector("camera/image_raw")   # Create our Node
+    node = Lane_Follower("camera/image_raw")   # Create our Node
     rclpy.spin(node)           # Run the Node until ready to shutdown
     rclpy.shutdown()           # cleanup
 

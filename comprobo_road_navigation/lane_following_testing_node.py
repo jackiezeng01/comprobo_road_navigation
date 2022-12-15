@@ -1,4 +1,4 @@
-'''
+''' 
 https://github.com/georgesung/road_lane_line_detection
 https://github.com/georgesung/advanced_lane_detection
 https://medium.com/geekculture/4-techniques-self-driving-cars-can-use-to-find-lanes-fcb6dd06b633
@@ -6,13 +6,8 @@ https://towardsdatascience.com/tutorial-build-a-lane-detector-679fd8953132#127c
 
 Start NEATO command: 
 ros2 launch neato_node2 bringup.py host:=192.168.16.50
-
-TODO: 
-- the 90 degree turn is not really 90 degrees bc the odometry is ass
-- Horizontal needs to be a certain length to be classified as correct
-- Filter the image for red lines because it is getting confused with the grid lanes. 
-- implement start ignoring turns as soon as you detect a horizontal line
 '''
+
 import cv2
 import matplotlib.pyplot as plt
 import math

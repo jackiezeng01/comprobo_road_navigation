@@ -18,7 +18,7 @@ from comprobo_road_navigation.path_planning import PathPlanning
 from comprobo_road_navigation.roadsign_detector import RoadSignDetector
 from comprobo_road_navigation.apriltag_detector import AprilTagDetector
 from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
-from comprobo_road_navigation.lane_following import Lane_Detector
+from comprobo_road_navigation.lane_following import Lane_Follower
 
 class NeatoCar(Node):
     """ The BallTracker is a Python object that encompasses a ROS node 
@@ -59,7 +59,7 @@ class NeatoCar(Node):
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
         self.apriltag_detector = AprilTagDetector()
         self.roadsign_detector = RoadSignDetector()
-        self.lane_detector = Lane_Detector()
+        self.lane_follower = Lane_Follower()
         self.velocity = None
         self.turning_flag = False
         self.stopping_flag = False
@@ -111,7 +111,7 @@ class NeatoCar(Node):
                         if reached == 2:
                             self.last_instruction = self.instructions[0][0]
                             self.instructions.pop(0)
-                    self.velocity, self.cv_image = self.lane_detector.run_lane_detector(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
+                    self.velocity, self.cv_image = self.lane_follower.run_lane_follower(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
 
 
                     """
