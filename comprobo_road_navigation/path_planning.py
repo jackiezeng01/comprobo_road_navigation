@@ -236,9 +236,9 @@ class PathPlanning():
 
 # plan_path = PathPlanning(tag_map)
 # nx.draw_spring(plan_path.graph, with_labels=True)
-plt.savefig("filename.png")
+# plt.savefig("filename.png")
 #plt.savefig("filename.png")
-plan_path.node_to_node((4, 0), (0, 5))
+# plan_path.node_to_node((4, 0), (0, 5))
 # print(plan_path.path)
 # plan_path.generate_instructions()
 # print(plan_path.instructions)
