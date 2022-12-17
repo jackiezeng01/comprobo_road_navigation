@@ -77,6 +77,11 @@ img{max-width:100%;}
 p {
 	font: normal 16px "RobotoMono-Light", monospace;
 	color: black;
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+p>b{
+	font: normal 16px robotomono-bold, monospace;
 }
 
 h1,h2,h3,h4,h5,h6 { color: #767676;}
@@ -164,6 +169,13 @@ a:hover{
 .content {
 	margin-top: 50px;
 	margin-bottom: 50px;
+}
+
+.center-img {
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	width: 50%;
 }
 
 .btn:hover {
@@ -906,15 +918,6 @@ color:#fff;
 	margin-right:10px;
 }
 
-/* Pricing Section */
-
-.choose_single_pricing_text{
-	text-align:center;
-	margin-top:50px;
-}
-.proffetional_price {
-	box-shadow: 0px 3px 13px 2px rgba(0, 0, 0, 0.1);
-}
 /* contact section */
 .contact{
 	padding:100px 0px;
