@@ -5,19 +5,27 @@ from itertools import permutations
 import matplotlib.pyplot as plt
 
 class PathPlanning():
-    def __init__(self, start_node, end_node) -> None:
+    def __init__(self, start_node: tuple, end_node: tuple) -> None:
         """
         Initialize an instance of path planning. 
 
-        tag_map: a dictionary where the keys are tuples. Each tuple contains
-            two tuples, representing the coordinates of two adjacent nodes.
-            The values are the tag number that connects the two nodes 
-        
-        self.map_grid: a binary representation of our map
-        self.graph: our map converted into a graph, with edges between adjacent
-            nodes
-        self.path: a list where the nodes to visit will be stores 
-        self.instructions: a list where the instructions will be stored
+        Args:
+            start_nodes: the coordinates of the node to start at
+            end_node: the cordinates of the node to end at
+
+        Attributes: 
+            self.tag_map: a dictionary where the keys are tuples. Each tuple contains
+                two tuples, representing the coordinates of two adjacent nodes.
+                The values are the tag number that connects the two nodes. This can be
+                an integer or a dictionary if a node has multiple tags. In those
+                dictionaries, the keys are tuples representing the previous square and the 
+                values are the tag number associated with that square. 
+            
+            self.map_grid: a binary representation of our map
+            self.graph: our map converted into a graph, with edges between adjacent
+                nodes
+            self.path: a list where the nodes to visit will be stores 
+            self.instructions: a list where the instructions will be stored
         """
         self.tag_map = {(2, 0): {(3, 0): 6, (1, 0): 6, (2, 1): 5}, 
             (2, 2): { (2, 1): 4, (2, 3): 4, (1, 2): 3},
@@ -35,14 +43,16 @@ class PathPlanning():
         nx.set_node_attributes(self.graph, self.tag_map, 'tag')
         self.node_to_node(start_node, end_node)
 
-    def map_to_graph(self, width, height):
+    def map_to_graph(self, width: int, height: int) -> nx.Graph:
         """
         Convert the binary map into a graph representation. 
 
-        width: int representing the width of the map
-        height: int representing the height of the map
+        Args: 
+            width: int representing the width of the map
+            height: int representing the height of the map
 
-        return: a Networkx graph object
+        Returns: 
+            a Networkx graph object representing the grid
         """
         graph = nx.Graph()
         # add a node for each free square
@@ -64,14 +74,16 @@ class PathPlanning():
                 graph.add_edge(node, bottom_node)
         return graph
 
-    def calculate_heur(self, start_node, end_node):
+    def calculate_heur(self, start_node: tuple, end_node: tuple) -> float:
         """
         Helper function to calculate an estimated distance between nodes.
+        
+        Args: 
+            start_node: tuple representing the coordinates of the node to start at
+            end_node: tuple representing the coordinates of the node to end at
 
-        start_node: tuple representing the coordinates of the node to start at
-        end_node: tuple representing the coordinates of the node to end at
-
-        return: float representing the Euclidean distance between the nodes
+        Returns: 
+            float representing the Euclidean distance between the nodes
         """
         # we're going for a straightforward Euclidean distance here
         x1 = start_node[0]
@@ -82,12 +94,18 @@ class PathPlanning():
 
         return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
-    def node_to_node(self, start_node, end_node):
+    def node_to_node(self, start_node: tuple, end_node: tuple) -> None:
         """
         Find a path from the start node to the end node. 
 
-        start_node: tuple of coordinates representing the start node
-        end_node: tuple of coordinates representing the end node
+        An implementation of the A* algorithm to find shortest distance. Uses
+        Euclidean distance between nodes as a heuristic. Can be run multiple 
+        times consectutively to calculate a path between multiple nodes. 
+        Full path is stored in self.path
+
+        Args: 
+            start_node: tuple of coordinates representing the start node
+            end_node: tuple of coordinates representing the end node
         """
         path = []
         path_node = None
@@ -232,13 +250,3 @@ class PathPlanning():
                         else: 
                             instructions.append((tag, 'right'))
         return instructions
-
-
-# plan_path = PathPlanning(tag_map)
-# nx.draw_spring(plan_path.graph, with_labels=True)
-plt.savefig("filename.png")
-#plt.savefig("filename.png")
-plan_path.node_to_node((4, 0), (0, 5))
-# print(plan_path.path)
-# plan_path.generate_instructions()
-# print(plan_path.instructions)
