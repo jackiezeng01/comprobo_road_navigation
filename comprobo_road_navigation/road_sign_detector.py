@@ -18,18 +18,22 @@ class RoadSignDetector(Node):
         super().__init__('ball_tracker')
         self.cv_image = None                        # the latest image from the camera
         self.bridge = CvBridge()                    # used to convert ROS messages to OpenCV
+        self.road_sign_id_confidence = 0
+        self.signs_detected = []
+        self.cX = 0
+        self.cY = 0
 
         self.create_subscription(Image, image_topic, self.process_image, 10)
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
-        """
+        # """
         # road sign bounds
-        self.red_lower_bound = 0
-        self.red_upper_bound = 160
-        self.green_lower_bound = 127
-        self.green_upper_bound = 225
-        self.blue_lower_bound = 0
-        self.blue_upper_bound = 80
-        """
+        # self.red_lower_bound = 0
+        # self.red_upper_bound = 160
+        # self.green_lower_bound = 127
+        # self.green_upper_bound = 225
+        # self.blue_lower_bound = 0
+        # self.blue_upper_bound = 80
+        # """
 
         # traffic light green bounds
         self.red_lower_bound = 0
@@ -103,16 +107,26 @@ class RoadSignDetector(Node):
         for c in cnts:
             # Identify shape
             if cv2.contourArea(c) > 150:
-                shape = self.detect_shape(c)
+                # shape = self.detect_shape(c)
                 # Find centroid and label shape name
                 M = cv2.moments(c)
                 if M["m00"] != 0:
-                    cX = int(M["m10"] / M["m00"])
-                    cY = int(M["m01"] / M["m00"])
-                    cv2.putText(frame, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,4,12), 2)
+                    self.cX = int(M["m10"] / M["m00"])
+                    self.cY = int(M["m01"] / M["m00"])
+                    # cv2.putText(frame, shape, (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,4,12), 2)
         cv2.drawContours(frame, cnts, -1, (0,255,0), 3)
+        # self.signs_detected.append(shape)
 
-    
+    def id_sign_with_confidence(self):
+        """
+        Add detected roadsign to list of signs detected
+        Use this list to see which road sign it probably is (whichever has the highest count)
+        and confidence (count of the road sign with the highest count / total count)
+        """
+        roadsign = max(self.signs_detected, key=self.signs_detected.count)
+        self.confidence = self.signs_detected.count(roadsign)/len(self.signs_detected)
+        return roadsign
+
     def loop_wrapper(self):
         """ This function takes care of calling the run_loop function repeatedly.
             We are using a separate thread to run the loop_wrapper to work around
@@ -132,6 +146,9 @@ class RoadSignDetector(Node):
             self.binary_image = cv2.inRange(self.cv_image, (self.blue_lower_bound,self.green_lower_bound,self.red_lower_bound), (self.blue_upper_bound,self.green_upper_bound,self.red_upper_bound))
             contours = self.get_contours(self.binary_image)
             self.id_and_draw_shapes(self.cv_image, contours)
+            # sign = self.id_sign_with_confidence()
+            # if self.confidence > 0.5:
+                # cv2.putText(self.cv_image, sign, (self.cX - 20, self.cY), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (36,4,12), 2)
             self.run_loop()
             time.sleep(0.1)
 
