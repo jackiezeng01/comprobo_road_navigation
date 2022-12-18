@@ -15,6 +15,13 @@ body {
 	font-size:15px;
 	background:#f3f3f3;
 }
+.set-grey-bg{
+	background: lightgrey;
+}
+
+.set-red-bg{
+	background: #EE0000;
+}
 
 
 /*==========================================
@@ -145,6 +152,12 @@ ul{
 	margin:0;
 	padding:0;
 	list-style:none;
+}
+
+li{
+	font-family: robotomono-light, monospace;
+	color: black;
+	margin-left: 40px;
 }
 
 a:hover{
@@ -393,7 +406,7 @@ a:hover{
 }
 .single_wedo{
 	margin-top:40px;
-	border:2px solid #ddd;
+	border:2px solid whitesmoke;
 	padding:30px;
 	border-radius:4px;
 	transition:.6s;
@@ -492,15 +505,19 @@ a:hover{
 .main_steps_content:after{
     position: absolute;
     content: "";
-    border-top: 2px solid #ddd;
     left: 15%;
-    top: 120px;
+    top: 200px;
     width: 70%;
     z-index: -1;
 }
+.team_pics{
+	width: 70%;
+}
+.photo-gallery > img{
+	margin: 15px
+}
 .single_steps{
 	margin-top: 60px;
-	
 }
 .single_steps:hover a i{
 	color: #fff;

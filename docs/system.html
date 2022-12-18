@@ -59,12 +59,398 @@
         <div class="row heading-padding"></div>
         <div class="row">
             <div class="head_title text-center wow fadeIn" data-wow-duration="1.5s">
-                <h1>STATEMENT OF ETHICS</h1>
+                <h1>OUR SYSTEM</h1>
                 <div class="separetor"></div>
             </div>
         </div>
-        <div class="row content">
-            <p>This is some text</p>
+    </div>
+</section>
+
+<section id="obstacle-avoid">
+    <div class="container">
+        <div class="row">
+            <div class="head_title text-left wow fadeIn" data-wow-duration="1.5s">
+                <h2>OBSTACLE AVOIDANCE</h2>
+                <div class="separetor2"></div>
+            </div>
+        </div>
+        <div class="row">
+            <p>
+                The obstacle avoidance behavior was implemented in the double lane section of the course.
+                The intended behavior was that the NEATO would change lanes to avoid an obstacle.
+            </p>
+            <p>
+                To detect obstacles, we used the NEATO lidar data. As we only want to look at obstacles that are in
+                front of the NEATO, we check the angles in front of the NEATO from -15 to 15 degrees. If the NEATO is
+                able to detect more than 10 points that are less than 0.5 meters in front of it then an obstacle is
+                considered detected.
+            </p>
+            <p>
+                Once an obstacle is detected, the next step is to change lanes. The first step involved checking
+                if the NEATO is in the left lane or right lane. I decided to do this by looking at the slope of the
+                lane divider. If the slope of the line was positive, it meant the NEATO was in the right lane and
+                vice versa for the left lane.
+            </p>
+            <div class="col-sm-6">
+                <img src="template/images/left_lane.png">
+                <p class="text-center">Left lane</p>
+            </div>
+            <div class="col-sm-6">
+                <img src="template/images/right_lane.png">
+                <p class="text-center">Right lane</p>
+            </div>
+
+            <p>
+                In order to find the slope of the lane lines, we used color masking to isolate the rectangles of the
+                lane dividers. Once that was done, I could use openCV to detect contours and find the centroid of
+                each detected contours. There was some noise in this step of the process and we set a threshold area
+                to filter out contours that were not a part of the lane divider. This codes snippet below shows how
+                this was done:
+            </p>
+            <p>
+                Once we knew which lane the NEATO was in, the last step was to actually move the NEATO into the other
+                lane. I opted to use a simple method in order to do this by telling the NEATO to turn 90 degrees,
+                drive half a meter and then turn 90 degrees in the opposite direction. I used the timing in order to
+                control this movement.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section id="lane-following">
+    <div class="container">
+        <div class="row">
+            <div class="head_title text-left wow fadeIn" data-wow-duration="1.5s">
+                <h2>LANE FOLLOWING</h2>
+                <div class="separetor2"></div>
+            </div>
+        </div>
+        <div class="row">
+            <p>
+                We wanted our robot to be able to traverse portions of the map autonomously, and to do this we
+                needed to implement lane following. We decided to go for a vision based approach and rely solely on
+                camera data for this component.
+            </p>
+            <p><b>Finding lines with Hough Line Transformation</b></p>
+            <p>
+                A critical part of lane following is accurately detecting the lane lines. We first preprocessed the
+                image by converting it to grayscale since we will only need the luminance channel for detecting edges.
+                We then applied a gaussian blur filter to it to decrease noise and reduce the number of false edges.
+            </p>
+            <p>
+                Then, using canny edge detection, we found all edges in the image. Notice that while the desired lane
+                edges are detected, edges in the surrounding environment are also detected. To filter out the
+                extraneous edges, we create a polygon segmenting off the approximate region of the image that contains
+                the road. Edges detected within this region are most likely to be lane lines. This mask removed most
+                of the extraneous edges other than the occasional tile edge detection.
+            </p>
+            <p>
+                By applying hough line transformation on the filtered edges, we got a list of lines detected where
+                each line is in the format of (x1, y1, x2, y2). To filter away the occasional vertical tile lines that
+                were detected, we filtered for lines that were within a likely slope range for lane lines, which we
+                approximated to be between [0.5, 2] after taking the absolute value.
+            </p>
+
+            <p><b>Finding Lane</b></p>
+            <p>
+                We then split the detected lines into 3 groups based on their slopes: left lane, right lane, and
+                horizontal lanes.
+                <br>
+            </p>
+            <li>Horizontal lane: m = 0</li>
+            <li>Left lane: m > 0</li>
+            <li>Right lane: m < 0</li>
+            <br>
+            <p>
+                We then took the average slope and y intercept of each of these groups and calculated the line to
+                represent each group.
+            </p>
+            <p><b>Lane Following Behavior</b></p>
+            <p>
+                For the lane following behavior, the neato needed to be able to stay in the center of the lanes while
+                driving forwards and be able to turn when it reached a corner.
+            </p>
+            <p><i>Driving within the lane</i></p>
+            <p>
+                We use the left and right lane to determine whether we’re driving centered in the lane. If both of
+                the lanes are detected, we calculate the intersection point of the two lines. If the intersection
+                point deviates from the approximate x center region of the frame, it means the neato is off center
+                and needs to correct its path. If the intersection point is too far left, the robot is leaning right
+                and needs to adjust leftward. Vice versa, if the intersection point is to the right, the robot needs
+                to adjust rightward.
+            </p>
+            <p>
+                In cases where only one lane is detected, we cannot calculate an intersection point and resort to
+                using the slope of the available lane to determine the robot position. Through observing the slope
+                of the lanes when the robot is driving centered, we know that the absolute value of the slope should
+                be around 0.75 if the robot is centered. If the slope value deviates from this range, the neato needs
+                to correct its path.
+            </p>
+            <p><i>Turning</i></p>
+            <p>
+                We use the horizontal lane to determine whether we’re approaching a dead end on the map and need to
+                make a 90-degree turn. If a horizontal line is detected and over a particular y threshold, it means
+                that we're approaching a horizontal border and the robot should make a turn.
+            </p>
+            <p>
+                There were several challenges with implementing this behavior:
+            </p>
+            <li>
+                Before calibrating the camera, the horizontal lanes were curved which prevented them from being
+                identified as horizontal.
+            </li>
+            <li>
+                The robot would incorrectly detect horizontal tile lines and attempt to turn. To remedy this, we
+                added a horizontal line counter that resets after each 90 degree turn. This counter keeps track of
+                the number of horizontal lines detected and only if it is above a certain threshold (5) does it
+                allow a turn. This decreases the likelihood of false positives.
+            </li>
+            <li>
+                The robot would detect the horizontal lane lines at first, however, as it got close, it would veer
+                off course and stop detecting the horizontal lane. We realized that this was because corners were
+                rounded and the robot was following distorted left/right lane lines. We patched this issue by
+                directing the robot to go straight if it detects an edge so it approaches the horizontal border head on.
+            </li>
+            <br>
+            <p>
+                So we now know when to turn 90 degrees, but which way should it turn? If there is an AprilTag at the
+                intersection, it will provide the direction to turn. However, if there are no AprilTags, the turn
+                direction is determined by the last lane detected. If the last detected lane is on the left, the left
+                side is most likely blocked and the robot should turn right. This is true vice versa for if the last
+                detected lane is on the right.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section id="path-plan">
+    <div class="container">
+        <div class="row">
+            <div class="head_title text-left wow fadeIn" data-wow-duration="1.5s">
+                <h2>PATH PLANNING</h2>
+                <div class="separetor2"></div>
+            </div>
+        </div>
+        <div class="row">
+            <p><b>Overview:</b><p>
+            <p>
+                The first step in our path planning is converting a map of our road to a representation that we can
+            run path planning on. We pass in a list representing our grid, where a 1 means a square is open and 0
+            means we cannot go there. This gets converted to a graph, where each habitable square is a node, and
+            there are edges in between adjacent nodes. In addition, we pass in a list of the AprilTags and their
+            locations. This is what that looks like:
+            </p>
+            <div class="row">
+                <img class="center-img" src="template/images/path_grid.svg">
+                <p class="text-center">A representation of the graph of our grid</p>
+            </div>
+            <p>
+                Once we have a graph representation, we can run our path planning algorithm to calculate a list of
+                the nodes we need to traverse. We can run this as many times as we want to generate as long a path as
+                desired. Once we have a complete path, we then run a self-designed algorithm to generate instructions
+                for the robot. The instructions tell the robot which way to turn at intersections.
+            </p>
+            <p><b>Path-Planning Algorithm</b></p>
+            <p>
+                We used the A* algorithm to plan the path from point to point. The A* algorithm is a more efficient
+                version of Dijkstra’s algorithm, which is a common shortest path algorithm. Dijkstra’s algorithm
+                requires calculating the distance from the start node to every other node. In some implementations
+                it stops once it reaches the end node, but it does not prioritize any node over any other node.
+                The A* algorithm, however, calculates only the shortest path from the start node to the end, and uses
+                some kind of metric to determine which nodes are the most likely. The metric we used was the Euclidean
+                distance from a node to the goal.
+            </p>
+            <p>One iteration of our A* algorithm goes as follows: </p>
+            <ol>
+                <li>Pop the first node off the list of open nodes. Because we’ve sorted it, this node will have the
+                    shortest estimated distance to the destination. This is part of what makes A* so useful.</li>
+                <li>If the node is the end node, we’re done! Otherwise…</li>
+                <li>Find all the nodes adjacent to the current node</li>
+                <li>For each adjacent node:
+                    <ol>
+                        <li>Make sure we haven’t seen it before</li>
+                        <li>Set the current node to be the parent of this one</li>
+                        <li>Check if this node is the end. If it is, we’re done! Otherwise…</li>
+                        <li>Estimate the distance from this node to the end</li>
+                        <li>If it’s not already in our list to check from, add it</li>
+                    </ol>
+                </li>
+                <li>
+                    Add the current node to the set of nodes we’ve already seen. This prevents us from processing
+                    nodes multiple times
+                </li>
+                <li>
+                    Sort the list of open nodes by estimated distance to the destination This means next time we pop
+                    a node off the list, it’s the one we think will get us there fastest.
+                </li>
+            </ol>
+            <p>
+                Once we’ve reached the destination, we trace from the end node back up to its parent node, from that
+                node to its parent node, and so on until we reach the start node, which has no parent. Alternatively,
+                if we process all the nodes and do not reach our destination, we know there is no path available and
+                we throw an error.
+            </p>
+            <p><b>Instruction Algorithm</b></p>
+            <p>
+                Once we have a path, we need to generate instructions for the robot. We will know if a decision
+                needs to be made if one of the nodes we are traversing has an AprilTag associated with it. This
+                indicates an intersection. In order to know what to do at the intersection, we designed our own
+                algorithm. The intuition is this:
+            </p>
+            <p>
+                If we are currently at (2, 3), shown in red below, and have just come from (2, 2), shown in grey
+                below, then our x coordinate has not changed, but our y coordinate has increased by one, as indicated
+                by the deltas in the diagram. This means that we were traveling in the +y direction.
+            </p>
+            <div class="row">
+                <img class="center-img" src="template/images/diagrams.svg">
+                <p class="text-center">
+                    The red node represents our current position, the grey node represents our <br>
+                    previous position, and the pink nodes represent our three possible options. <br>
+                    The circled node is our planned destination.
+                </p>
+            </div>
+            <p>
+                In this case, we have three possible paths - left, right, or straight. If our next node is (2, 4),
+                our delta x and y would not change. In this case that means delta x would still be 0 and delta y would
+                still be 1. Since our deltas are the same as the previous node, we can tell that we want to go straight.
+            </p>
+            <p>
+                If our next node were (1, 3), we would want to turn right. We can tell this because our x and y have
+                switched from the previous node - now delta y is 0, which means we are going a different direction.
+                Delta x being -1 indicates that we need to travel in the -x direction, so we need to turn left.
+            </p>
+            <p>
+                In this diagram, our next node is (3, 3), as indicated by the outline. Again, we can tell that we need
+                to change direction because delta y is now 0 and delta x is not. This time, delta x is positive, so we
+                want to travel in the +x direction. In this case, that means turning right.
+            </p>
+            <p>
+                The final piece of this puzzle is this: if we are traveling in the +y direction (down), then to
+                travel in the -x direction we need to turn right. However, if we happened to approach this same
+                intersection from the other direction, we would be traveling in the -y direction, and would need to
+                turn left to travel in the -x direction. With this, we can generalize our solution to work for all
+                squares on the grid traveling in any direction. We generate the instruction ‘left’, ‘right’ or
+                ‘straight’, and associate it with the AprilTag that the robot should look for to perform this action.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section id="april-tags">
+    <div class="container">
+        <div class="row">
+            <div class="head_title text-left wow fadeIn" data-wow-duration="1.5s">
+                <h2>AprilTag Detection</h2>
+                <div class="separetor2"></div>
+            </div>
+        </div>
+        <div class="row">
+            <p>
+                AprilTag detection goes hand in hand with the driving instructions output from path planning.
+                In order for the Neato to be able to navigate the track, we placed AprilTag signposts at each
+                intersection where the Neato could make a decision of either going straight, turning left, or
+                turning right.
+            </p>
+            <p>
+                In order to detect AprilTags from the camera input, we used a Detector object from the AprilTag Python
+                library. Using this library, we could obtain the ID and tag size of any April tag within the Neato's
+                view. We used the detected AprilTag size as a proxy for the distance between the Neato and the tag.
+                As shown in the photo below, detected AprilTags, along with characteristics such as ID, size and
+                associated instruction, are drawn onto the video window for ease of debugging. Though all detected
+                AprilTags are drawn onto the screen, the target ID (according to the instruction currently being
+                executed) is drawn in green.
+            </p>
+            <div class="row">
+                <img class="center-img" src="template/images/apriltag.png">
+                <p class="text-center">On the left is an AprilTag is identified in the green outline</p>
+            </div>
+            <p>
+                The size of the AprilTag was used to determine when the Neato should execute the current instruction.
+                Until the size of the target AprilTag crosses some threshold value, the Neato continues with its
+                default line-following behavior. Once the AprilTag reaches that threshold size, it’s an indication
+                that the Neato has reached that intersection and should begin executing the instruction. Using this
+                picture as an example, the Neato is currently line-following and simultaneously detected AprilTags in
+                view. It sees an AprilTag with an ID of 2, and we can tell that it’s associated with the current
+                instruction because the markers are shown in green. The size of the AprilTag is currently 1444, though
+                once it crosses some threshold value, it will begin to turn right and move on with the next instruction.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section id="road-sign">
+    <div class="container">
+        <div class="row">
+            <div class="head_title text-left wow fadeIn" data-wow-duration="1.5s">
+                <h2>Road Sign Detection</h2>
+                <div class="separetor2"></div>
+            </div>
+        </div>
+        <div class="row">
+            <p>
+                For this project, we decided to include three types of road signs:
+            </p>
+            <div class="col-sm-4">
+                <img src="template/images/stopsign.jpg">
+                <p class="text-center">Stop sign</p>
+            </div>
+            <div class="col-sm-4">
+                <img src="template/images/yield.jpg">
+                <p class="text-center">Yield sign</p>
+            </div>
+            <div class="col-sm-4">
+                <img src="template/images/trafficlightaheadsign.jpg">
+                <p class="text-center">Traffic light ahead sign</p>
+            </div>
+            <br>
+            <p>
+                The reason we chose these road signs is because of our design decision to use color masking and shape
+                classification as our method road sign detection. Yield, Stop and Traffic Light Ahead are all unique
+                polygons that have a different number of vertices. The images below show the detected outline of the
+                sign, how many polygon vertices it recognizes and what the resulting traffic sign is.
+            </p>
+            <div class="col-sm-4">
+                <img src="template/images/stopsign.png">
+                <p class="text-center">Stop sign</p>
+            </div>
+            <div class="col-sm-4">
+                <img src="template/images/yield.png">
+                <p class="text-center">Yield sign</p>
+            </div>
+            <div class="col-sm-4">
+                <img src="template/images/trafficlight.png">
+                <p class="text-center">Traffic light ahead sign</p>
+            </div>
+            <p>
+                How this interfaces with the broader road navigation project is in determining the Neato’s driving
+                behavior at intersections where a traffic sign is detected. If the Neato spots a Yield or Stop sign,
+                the Neato should come to a stop at the next intersection, check that there are no passing cars or
+                pedestrians, and then keep going on its planned path. If the Neato spots a Traffic Light Ahead sign,
+                it should enter traffic signal detection mode which uses color masking to detect when it’s red,
+                yellow, or green light. If it’s a red light or yellow light, the Neato should stop at the next
+                intersection and wait for the signal to turn green before continuing. If it’s a green light, the
+                Neato should keep on driving along its planned path.
+            </p>
+            <p>
+                The image below shows road sign detection from the Neato’s camera input. The outline of the sign is
+                drawn onto the video window in green, along with the sign type and number of vertices detected.
+            </p>
+            <div class="row">
+                <img class="center-img" src="template/images/yield_neato.png">
+                <p class="text-center">Detecting a yield sign</p>
+            </div>
+            <p>
+                The GIF below shows the traffic sign detection behavior, where color masking is used to detect a
+                green light. Using minimum and maximum bounds for the RGB values of this green color, we could create
+                a binary window from the Neato’s camera input. If there is a large enough contour detected of this
+                color, then that indicates the traffic signal is green and the Neato should keep driving. Otherwise,
+                it should stop at the intersection and wait for a green contour to appear.
+            </p>
+            <div class="row">
+                <img class="center-img" src="template/images/traffic_signal.gif">
+                <p class="text-center">Using color masking to detect a green light</p>
+            </div>
         </div>
     </div>
 </section>

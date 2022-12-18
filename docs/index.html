@@ -68,30 +68,47 @@
 <section id="abouts" class="abouts">
     <div class="container">
         <div class="row">
-            <div class="main_abouts_content">
+            <div class="head_title">
                 <div class="col-md-6 col-sm-6 col-xs-12">
                     <div class="single_abouts wow fadeInLeft" data-wow-duration="1s">
-                        <h2>ABOUT GRAXPO</h2>
+                        <h2>OUR PROJECT</h2>
                         <div class="separetor2"></div>
-                        <p>In gnissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.</p>
                     </div>
-
                 </div>
-
-
-                <div class="col-md-6 col-sm-6 col-xs-12">
-                    <div class="single_abouts wow fadeInRight" data-wow-duration="1s">
-                        <img src="template/images/ab.jpg" alt="" />
-                    </div>
+             </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 col-sm-6 col-xs-12">
+                <div class="wow fadeInRight" data-wow-duration="1s">
+                    <p>The purpose of this project was to build a NEATO that autonomously navigate through a course
+                        simulating a real road, with road signs, stop lights, lanes, intersections, and obstacles.
+                    </p>
+                    <p>
+                        The Neato navigates on a 6x7 grid of 18 inch squares, with red tape marking lanes and
+                        indicating which squares are not navigable. All streets can be navigated in both direction,
+                        but are only wide enough for one Neato, with the exception of a two-lane section at the bottom
+                        that allows for passing. Intersections are indicated by AprilTags sign
+                        along the road, and road signs are indicated by signs of varying shapes. Obstacles are
+                        represented by boxes.
+                    </p>
+                    <p>
+                        To the right is a video of the Neato navigating through a portion of the track, combined with a
+                        sensor view that shows the lanes and signs the Neato is identifying.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 col-sm-6 col-xs-12">
+                <div class="single_abouts wow fadeInRight text-center" data-wow-duration="1s">
+                    <video width="480" height="360" controls>
+                        <source src="template/images/split_cam.mp4" type="video/mp4">
+                    </video>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-
-
-<section id="wedo">
+<section id="wedo" class="set-grey-bg">
     <div class="container">
         <div class="row">
             <div class="head_title text-center wow fadeIn" data-wow-duration="1.5s">
@@ -99,96 +116,61 @@
                 <div class="separetor"></div>
             </div>
             <div class="wedo_content_area">
-
                 <div class="col-md-6 col-sm-6 col-xs-12">
                     <div class="single_wedo wow fadeIn" data-wow-duration="1s">
-                        <div class="single_left_icon">
-                            <a href=""><img src="template/images/path_planning_maze.svg"></a>
-                        </div>
-                        <div class="single_right_text">
-                            <h4>PATH PLANNING</h4>
-                            <div class="separetor2"></div>
-                            <p>The robot calculates the shortest path between points, then generates instructions on how to get there.</p>
-                        </div>
+                        <a href="system.html#path-plan">
+                            <div class="single_left_icon">
+                                <img src="template/images/path_planning_maze.svg">
+                            </div>
+                            <div class="single_right_text">
+                                <h4>PATH PLANNING</h4>
+                                <div class="separetor2"></div>
+                                <p>The robot calculates the shortest path between points, then generates instructions on how to get there.</p>
+                            </div>
+                        </a>
                     </div>
                 </div>
                 <div class="col-md-6 col-sm-6 col-xs-12">
                     <div class="single_wedo wow fadeIn" data-wow-duration="1s">
-                        <div class="single_left_icon">
-                            <a href=""><img src="template/images/signs.svg"></a>
-                        </div>
-
-                        <div class="single_right_text">
-                            <h4>SIGN RECOGNITION</h4>
-                            <div class="separetor2"></div>
-                            <p>The robot can detect and identify different signs shapes, and perform different behaviors at each sign.</p>
-                        </div>
+                        <a href="system.html#road-sign">
+                            <div class="single_left_icon">
+                                <img src="template/images/signs.svg">
+                            </div>
+                            <div class="single_right_text">
+                                <h4>SIGN RECOGNITION</h4>
+                                <div class="separetor2"></div>
+                                <p>The robot can detect and identify different signs shapes, and perform different behaviors at each sign.</p>
+                            </div>
+                        </a>
                     </div>
                 </div>
                 <div class="col-md-6 col-sm-6 col-xs-12">
                     <div class="single_wedo wow fadeIn" data-wow-duration="1s">
-                        <div class="single_left_icon">
-                            <a href=""><img src="template/images/road.svg"></a>
-                        </div>
-
-                        <div class="single_right_text">
-                            <h4>LANE FOLLOWING</h4>
-                            <div class="separetor2"></div>
-                            <p>Lorem Ipsum is simply dummy text thprinting andthe industry's standard dummy text lorem Ipsum is simply dummy</p>
-                        </div>
+                        <a href="system.html#lane-following">
+                            <div class="single_left_icon">
+                                <img src="template/images/road.svg">
+                            </div>
+                            <div class="single_right_text">
+                                <h4>LANE FOLLOWING</h4>
+                                <div class="separetor2"></div>
+                                <p>The robot uses edge detection algorithms to detect lanes and make adjustments to stay within the track boundaries.</p>
+                            </div>
+                        </a>
                     </div>
                 </div>
                 <div class="col-md-6 col-sm-6 col-xs-12">
                     <div class="single_wedo wow fadeIn" data-wow-duration="1s">
-                        <div class="single_left_icon">
-                            <a href=""><img src="template/images/barrier.svg"></a>
-                        </div>
+                        <a href="system.html#obstacle-avoid">
+                            <div class="single_left_icon">
+                                <img src="template/images/barrier.svg">
+                            </div>
 
-                        <div class="single_right_text">
-                            <h4>OBSTACLE AVOIDANCE</h4>
-                            <div class="separetor2"></div>
-                            <p>Lorem Ipsum is simply dummy text thprinting andthe industry's standard dummy text lorem Ipsum is simply dummy</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-
-<section id="counterUp" class="counterUp">
-    <div class="counter_overlay">
-        <div class="container">
-            <div class="row">
-                <div class="main_counter_content">
-                    <div class="col-md-3 col-sm-6 col-xs-12">
-                        <div class="sinle_counter wow fadeIn" data-wow-duration="1s">
-                            <h4><i class="fa fa-star"></i><span class="static-counter">158</span></h4>
-                            <p>PROJECT COMPLETED</p>
-                            <div class="separetorwhite"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 col-xs-12">
-                        <div class="sinle_counter wow fadeIn" data-wow-duration="1.8s">
-                            <h4><i class="fa fa-star"></i><span class="static-counter">580</span></h4>
-                            <p>PROJECT COMPLETED</p>
-                            <div class="separetorwhite"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 col-xs-12">
-                        <div class="sinle_counter wow fadeIn" data-wow-duration="2.2s">
-                            <h4><i class="fa fa-star"></i><span class="static-counter">1500</span></h4>
-                            <p>PROJECT COMPLETED</p>
-                            <div class="separetorwhite"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 col-xs-12">
-                        <div class="sinle_counter wow fadeIn" data-wow-duration="2.8s">
-                            <h4><i class="fa fa-star"></i><span class="static-counter">1000</span></h4>
-                            <p>PROJECT COMPLETED</p>
-                            <div class="separetorwhite"></div>
-                        </div>
+                            <div class="single_right_text">
+                                <h4>OBSTACLE AVOIDANCE</h4>
+                                <div class="separetor2"></div>
+                                <p>When the robot gets close to an obstacle, it can detect the proximity and change lanes to avoid it.</p>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -201,30 +183,33 @@
     <div class="container-fluid">
         <div class="row">
             <div class="head_title text-center wow fadeIn" data-wow-duration="1.5s">
-                <h2>THREE SIMPLE STEPS</h2>
+                <h2>OUR TEAM</h2>
                 <div class="separetor"></div>
-                <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry been the industry's standard dummy text </p>
             </div>
             <div class="main_steps_content text-center">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="single_steps wow fadeIn" data-wow-duration="1s">
-                        <a href=""><i class="fa fa-mobile"></i></a>
-                        <h4>INTEGER VENEATIS</h4>
-                        <p>Lorem Ipsum is simply dummy text of the printing and typesetting</p>
+                        <img src="template/images/jackie_pic.png" class="team_pics">
+                        <h4>JACKIE ZENG</h4>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="main_steps_content text-center">
+                    <div class="col-md-3">
+                        <div class="single_steps wow fadeIn" data-wow-duration="1s">
+                            <img src="template/images/melody_pic.png" class="team_pics">
+                            <h4>MELODY CHIU</h4>
+                        </div>
+                    </div>
+                <div class="col-md-3">
                     <div class="single_steps wow fadeIn" data-wow-duration="1.8s">
-                        <a href=""><i class="fa fa-bar-chart"></i></a>
-                        <h4>INTEGER VENEATIS</h4>
-                        <p>Lorem Ipsum is simply dummy text of the printing and typesetting</p>
+                        <img src="template/images/simrun_pic.png" class="team_pics">
+                        <h4>SIMRUN MUTHA</h4>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="single_steps wow fadeIn" data-wow-duration="2.8s">
-                        <a href=""><i class="fa fa-bar-chart"></i></a>
-                        <h4>INTEGER VENEATIS</h4>
-                        <p>Lorem Ipsum is simply dummy text of the printing and typesetting</p>
+                        <img src="template/images/annabelle_pic.png" class="team_pics">
+                        <h4>ANNABELLE PLATT</h4>
                     </div>
                 </div>
             </div>
@@ -232,276 +217,33 @@
     </div>
 </section>
 
-<section id="featured" class="featured">
+<section id="featured" class="set-grey-bg">
     <div class="container">
         <div class="row">
             <div class="head_title text-center wow flipInX" data-wow-duration="1s">
-                <h2>OUR FEATURED WORK</h2>
+                <h2>PHOTO GALLERY</h2>
                 <div class="separetor"></div>
-                <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry been the industry's standard dummy text</p>
             </div>
         </div>
-    </div>
-    <div class="main_featured_content">
-        <div class="col-md-4 col-sm-6 col-xs-12 single_featured_area">
-            <div class="single_featured wow fadeIn" data-wow-duration=".5s">
-                <img src="template/images/f1.jpg" alt="" />
-                <div class="featured_overlay">
-                    <div class="overlay_content">
-                        <a href="" class="btn btn-white">VIEW DEATIL</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 col-sm-6 col-xs-12 single_featured_area">
-            <div class="single_featured wow fadeIn" data-wow-duration=".5s">
-                <img src="template/images/f2.jpg" alt="" />
-                <div class="featured_overlay">
-                    <div class="overlay_content">
-                        <a href="" class="btn btn-white">VIEW DEATIL</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 col-sm-6 col-xs-12 single_featured_area">
-            <div class="single_featured wow fadeIn" data-wow-duration=".5s">
-                <img src="template/images/f3.jpg" alt="" />
-                <div class="featured_overlay">
-                    <div class="overlay_content">
-                        <a href="" class="btn btn-white">VIEW DEATIL</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-
-
-<section id="service" class="service">
-    <div class="container">
         <div class="row">
-            <div class="head_title text-center wow zoomIn" data-wow-duration="0.5s">
-                <h2>OUR BEST SERVICE</h2>
-                <div class="separetor"></div>
-                <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry been the industry's standard dummy text</p>
+            <div class="col-md-4 photo-gallery">
+                <img src="template/images/intersection.jpg">
+                <img src="template/images/melodyatwork.jpg">
+                <img src="template/images/trafficlight.jpg">
             </div>
-        </div>
-    </div>
-    <div class="main_service_content">
-        <div class="single_service_area single_service_area_one wow fadeIn" data-wow-duration="1.5s">
-            <div class="col-md-6 col-md-offset-6 col-sm-5 col-sm-offset-7">
-                <div class="single_service">
-                    <h4>AWESOME TITLE HERE</h4>
-                    <div class="separetorwhite"></div>
-                    <p>Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock.</p>
-                </div>
+            <div class="col-md-4 photo-gallery">
+                <img src="template/images/jackietouchingrobot.jpg">
+                <img src="template/images/map.jpg">
+                <img src="template/images/pink_line.jpg">
             </div>
-        </div>
-        <div class="single_service_area single_service_area_two wow fadeIn" data-wow-duration="2.5s">
-            <div class="col-md-6 col-sm-5 text-right">
-                <div class="single_service">
-                    <h4>AWESOME TITLE HERE</h4>
-                    <div class="separetorwhite floatright"></div>
-                    <p class="service_P">Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock.</p>
-                </div>
-            </div>
-        </div>
-        <div class="single_service_area single_service_area_three wow fadeIn" data-wow-duration="3.5s">
-            <div class="col-md-6 col-md-offset-6 col-sm-5 col-sm-offset-7">
-                <div class="single_service">
-                    <h4>AWESOME TITLE HERE</h4>
-                    <div class="separetorwhite"></div>
-                    <p>Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</section>
-
-
-<section id="business" class="business">
-    <div class="overlay_business">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-12 col-sm-12 col-xs-12">
-                    <div class="main_business_content text-center wow fadeIn" data-wow-duration="2s">
-                        <h2>CREATE YOUR OWN BUSINESS WITH OUR IDEAS !</h2>
-                        <h4>GET READY TO STAND OUT</h4>
-                        <a href="" class="btn pink-btn">KEEP EXPLORING</a>
-                    </div>
-                </div>
+            <div class="col-md-4 photo-gallery">
+                <img src="template/images/trafficsigntaped.jpg">
+                <img src="template/images/broll.jpg">
+                <img src="template/images/jackieinaction.jpg">
             </div>
         </div>
     </div>
 </section>
-
-
-<section id="team" class="team">
-    <div class="container">
-        <div class="row">
-            <div class="head_title text-center wow zoomIn" data-wow-duration="0.5s">
-                <h2>MEET OUR CREW</h2>
-                <div class="separetor"></div>
-                <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry been the industry's standard dummy text</p>
-            </div>
-
-            <div class="main_team_content text-center">
-                <div class="col-md-3 col-sm-6 col-xs-12">
-                    <div class="single_team wow fadeIn" data-wow-duration="1.5s">
-                        <div class="single_team_img">
-                            <img src="template/images/tm1.jpg" alt="" />
-                            <div class="single_team_overlay text-center">
-                                <p>Hi ! I m Redwan from bangladesh.I am a Professional graphic designer & expert on print and UI/ UX .</p>
-                                <a href=""><i class="fa fa-facebook"></i></a>
-                                <a href=""><i class="fa fa-linkedin"></i></a>
-                            </div>
-                        </div>
-                        <div class="single_team_name">
-                            <h4>IBN HASAN</h4>
-                            <p>CEO</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 col-xs-12">
-                    <div class="single_team wow fadeIn" data-wow-duration="2s">
-                        <div class="single_team_img">
-                            <img src="template/images/tm2.jpg" alt="" />
-                            <div class="single_team_overlay text-center">
-                                <p>Hi ! I m Redwan from bangladesh.I am a Professional graphic designer & expert on print and UI/ UX .</p>
-                                <a href=""><i class="fa fa-facebook"></i></a>
-                                <a href=""><i class="fa fa-linkedin"></i></a>
-                            </div>
-                        </div>
-                        <div class="single_team_name">
-                            <h4>RAF REDWAN</h4>
-                            <p>LEAD OF DESIGN </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 col-xs-12">
-                    <div class="single_team wow fadeIn" data-wow-duration="2.5s">
-                        <div class="single_team_img">
-                            <img src="template/images/tm3.jpg" alt="" />
-                            <div class="single_team_overlay text-center">
-                                <p>Hi ! I m Redwan from bangladesh.I am a Professional graphic designer & expert on print and UI/ UX .</p>
-                                <a href=""><i class="fa fa-facebook"></i></a>
-                                <a href=""><i class="fa fa-linkedin"></i></a>
-                            </div>
-                        </div>
-                        <div class="single_team_name">
-                            <h4>IBN HASAN</h4>
-                            <p>DEV</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 col-xs-12">
-                    <div class="single_team wow fadeIn" data-wow-duration="2.8s">
-                        <div class="single_team_img">
-                            <img src="template/images/tm4.jpg" alt="" />
-                            <div class="single_team_overlay text-center">
-                                <p>Hi ! I m Redwan from bangladesh.I am a Professional graphic designer & expert on print and UI/ UX .</p>
-                                <a href=""><i class="fa fa-facebook"></i></a>
-                                <a href=""><i class="fa fa-linkedin"></i></a>
-                            </div>
-                        </div>
-                        <div class="single_team_name">
-                            <h4>IBN HASAN</h4>
-                            <p>AKAMLA</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section id="testimonial" class="testimonial">
-    <div class="testimonial_overlay">
-        <div class="container">
-            <div class="row">
-                <div class="head_title text-center wow slideInDown" data-wow-duration="0.5s">
-                    <h2>TESTIMONIALS</h2>
-                    <div class="separetorwhite2"></div>
-                    <h5>WAHT OUR CLINT SAY </h5>
-                </div>
-                <div class="main_testimonial text-center wow fadeIn" data-wow-duration="1s">
-                    <div class="single_testimonial">
-                        <div class="single_testimonial_img">
-                            <img class="img-circle" src="template/images/tst1.jpg" alt="" />
-                            <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,m quia.</p>
-                            <a href="">RAF REDWAN</a>
-                        </div>
-                    </div>
-                    <div class="single_testimonial">
-                        <div class="single_testimonial_img">
-                            <img class="img-circle" src="template/images/tst1.jpg" alt="" />
-                            <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,m quia.</p>
-                            <a href="">RAF REDWAN</a>
-                        </div>
-                    </div>
-                    <div class="single_testimonial">
-                        <div class="single_testimonial_img">
-                            <img class="img-circle" src="template/images/tst1.jpg" alt="" />
-                            <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,m quia.</p>
-                            <a href="">RAF REDWAN</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-
-<section id="blog" class="blog sections">
-    <div class="container">
-        <div class="row">
-            <div class="head_title text-center wow zoomIn" data-wow-duration="0.5s">
-                <h2>LATTEST BLOG</h2>
-                <div class="separetor"></div>
-                <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry been the industry's standard dummy text</p>
-            </div>
-            <div class="main_blog">
-                <div class="col-md-6 col-sm-6 col-xs-12">
-                    <div class="single_blog wow fadeInLeft" data-wow-duration="0.5s">
-                        <div class="single_blog_img">
-                            <img src="template/images/blog1.jpg" alt="" />
-                        </div>
-
-                        <div class="single_blog_overlay">
-                            <h4>THE WINTER TAL’S</h4>
-                            <p>Raf Redwan</p>
-                            <div class="separetorwhite"></div>
-
-                            <p>Lorem ipsum dol. Ut enim minim veniam, qub e eu fugiat anim id est</p>
-                            <a href="" class="date_data"><i class="fa fa-gift"></i>12 th September, 2015</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 col-sm-6 col-xs-12">
-                    <div class="single_blog wow fadeInRight" data-wow-duration="0.5s">
-                        <div class="single_blog_img">
-                            <img src="template/images/blog1.jpg" alt="" />
-                        </div>
-
-                        <div class="single_blog_overlay">
-                            <h4>THE WINTER TAL’S</h4>
-                            <p>Raf Redwan</p>
-                            <div class="separetorwhite"></div>
-
-                            <p>Lorem ipsum dol. Ut enim minim veniam, qub e eu fugiat anim id est</p>
-                            <a href="" class="date_data"><i class="fa fa-gift"></i>12 th September, 2015</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
 
 <footer id="footer" class="footer">
     <div class="container">
