@@ -19,6 +19,10 @@ body {
 	background: lightgrey;
 }
 
+.set-code-bg{
+	background: #eeeeee;
+}
+
 .set-red-bg{
 	background: #EE0000;
 }

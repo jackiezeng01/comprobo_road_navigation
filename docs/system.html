@@ -64,14 +64,13 @@
             </div>
         </div>
     </div>
+    <div class="col-lg-12">
+        <img class="center-img" style="width: 64%" src="template/images/system.jpg">
+        <p class="text-center">System Design Diagram</p>
+    </div>
 </section>
 
-</p>
-<div class="row">
-    <img class="center-img" src="template/images/system.jpg">
-    <p class="text-center">System Design Diagram</p>
-</div>
-<p>
+
 
 <section id="obstacle-avoid">
     <div class="container">
@@ -114,6 +113,26 @@
                 to filter out contours that were not a part of the lane divider. This codes snippet below shows how
                 this was done:
             </p>
+            <pre class="set-code-bg"><code>
+                def filter_contours_find_centroids(self, contours, areas):
+                """
+                Filter contours that are too small and find the centroid of each one
+
+                Args:
+                contours: list of all the detected contours
+                areas: list of corresponding area values for each contour
+                """
+                for idx,contour in enumerate(contours):
+                    # check to see the areas are f
+                    if areas[idx] > 200:
+                        M = cv2.moments(contour)
+                        cx = int(M['m10']/M['m00'])
+                        cy = int(M['m01']/M['m00'])
+                        # check that it is below some point because the lane lines are in the bottom half of image
+                        if cy < 100:
+                            self.centroids.append([cx, cy])
+                            self.filtered_contours.append(contour)
+            </code></pre>
             <p>
                 Once we knew which lane the NEATO was in, the last step was to actually move the NEATO into the other
                 lane. I opted to use a simple method in order to do this by telling the NEATO to turn 90 degrees,
