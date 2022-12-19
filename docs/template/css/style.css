@@ -739,59 +739,6 @@ a:hover{
   -webkit-transform-origin: 50% 0;
 }
 
-
-
-/* Subcribs Section */
-
-.subcribs{
-	background:url(../images/subcribecebg.jpg) no-repeat top center;
-	background-size:cover;
-}
-
-.main_subcribs_content{
-	
-}
-
-.single_subcribs h4{
-	font-size:20px;
-	font-family:'Roboto';
-	font-weight:500;
-	color:#fff;
-}
-.single_subcribs p{
-    font-size: 16px;
-    font-family: 'OpenSans';
-    font-weight: 300;
-    color: #fff;
-    line-height: 25px;
-}
-.single_subcribs_right{
-	margin-top: 50px;
-}
-.single_subcribs_right input[type="text"]{
-border: 1px solid #fff;
-    height: 50px;
-    padding: 5px 10px;
-    background: none;
-    color: #fff;
-    font-family: 'OpenSans';
-    font-weight: 300;
-    font-size: 12px;
-	width:60%;
-}
-.single_subcribs_right input[type="submit"]{
-    border: 1px solid #fff;
-    background: none;
-    height: 50px;
-    margin-left: -5px;
-    color: #fff;
-	font-family:'Roboto';
-	font-weight:600;
-    font-size:12px;	
-	width:20%;
-	outline: none;
-}
-
 /* Team Section */
 
 .team{
