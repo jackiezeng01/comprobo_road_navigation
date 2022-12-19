@@ -13,7 +13,7 @@ class AprilTagDetector():
                                         5: 3000,
                                         6: 2100,
                                         7: 2100,
-                                        8: 5500}
+                                        8: 3000}
         self.cv_image = None
         self.raw_cv_image = None
 

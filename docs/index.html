@@ -1,0 +1,300 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>NEATO NAVIGATORS</title>
+    <link rel="stylesheet" href="template/css/font-awesome/css/font-awesome.min.css" />
+
+    <link rel="stylesheet" href="template/css/fonts/stylesheet.css" />
+    <link rel="stylesheet" href="template/css/fonts/fonts.css" />
+    <link rel="stylesheet" href="template/css/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="template/css/animat/animate.min.css" />
+    <link rel="stylesheet" href="template/css/fancybox/jquery.fancybox.css" />
+    <link rel="stylesheet" href="template/css/nivo-lightbox/nivo-lightbox.css" />
+    <link rel="stylesheet" href="template/css/themes/default/default.css" />
+    <link rel="stylesheet" href="template/css/owl-carousel/owl.carousel.css" />
+    <link rel="stylesheet" href="template/css/owl-carousel/owl.theme.css" />
+    <link rel="stylesheet" href="template/css/owl-carousel/owl.transitions.css">
+
+    <link rel="stylesheet" href="template/css/style.css" />
+    <link rel="stylesheet" href="template/css/responsive.css" />
+</head>
+<body>
+
+<div class='preloader'><div class='loaded'>&nbsp;</div></div>
+
+<header id="home" class="header">
+    <div class="main_menu_bg navbar-fixed-top">
+        <div class="container">
+            <div class="row">
+
+                <nav class="navbar navbar-default">
+                    <div class="col-lg-3"></div>
+                    <div class="col-lg-offset-5">
+                        <div class="navbar-header">
+                            <div class="" href="#">
+                                <a href="#"><img class="banner-logo" src="template/images/neato_navigators.svg" alt=""/></a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Collect the nav links, forms, and other content for toggling -->
+                    <div class="collapse navbar-collapse col-lg-3" id="bs-example-navbar-collapse-1">
+                        <ul class="nav navbar-nav navbar-right">
+                            <li class="active"><a href="index.html">Home</a></li>
+                            <li><a href="ethics.html">Ethics</a></li>
+                            <li><a href="system.html">System</a></li>
+                            <li><a href="blog.html">Blog</a></li>
+                        </ul>
+                    </div><!-- /.navbar-collapse -->
+                </nav>
+            </div><!--End of row -->
+
+        </div><!--End of container -->
+
+    </div>
+</header> <!--End of header -->
+
+<section id="banner" class="banner">
+    <div class="container">
+        <div class="row">
+            <div class="main_banner_area text-center">
+                    <div class="col-md-12 col-sm-12"></div>
+            </div>
+        </div>
+    </div>
+</section><!-- End of Banner Section -->
+
+
+<section id="abouts" class="abouts">
+    <div class="container">
+        <div class="row">
+            <div class="head_title">
+                <div class="col-md-6 col-sm-6 col-xs-12">
+                    <div class="single_abouts wow fadeInLeft" data-wow-duration="1s">
+                        <h2>OUR PROJECT</h2>
+                        <div class="separetor2"></div>
+                    </div>
+                </div>
+             </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 col-sm-6 col-xs-12">
+                <div class="wow fadeInRight" data-wow-duration="1s">
+                    <p>The purpose of this project was to build a NEATO that autonomously navigate through a course
+                        simulating a real road, with road signs, stop lights, lanes, intersections, and obstacles.
+                    </p>
+                    <p>
+                        The Neato navigates on a 6x7 grid of 18 inch squares, with red tape marking lanes and
+                        indicating which squares are not navigable. All streets can be navigated in both direction,
+                        but are only wide enough for one Neato, with the exception of a two-lane section at the bottom
+                        that allows for passing. Intersections are indicated by AprilTags sign
+                        along the road, and road signs are indicated by signs of varying shapes. Obstacles are
+                        represented by boxes.
+                    </p>
+                    <p>
+                        To the right is a video of the Neato navigating through a portion of the track, combined with a
+                        sensor view that shows the lanes and signs the Neato is identifying.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 col-sm-6 col-xs-12">
+                <div class="single_abouts wow fadeInRight text-center" data-wow-duration="1s">
+                    <video width="480" height="360" controls>
+                        <source src="template/images/split_cam.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="wedo" class="set-grey-bg">
+    <div class="container">
+        <div class="row">
+            <div class="head_title text-center wow fadeIn" data-wow-duration="1.5s">
+                <h2>COMPONENTS</h2>
+                <div class="separetor"></div>
+            </div>
+            <div class="wedo_content_area">
+                <div class="col-md-6 col-sm-6 col-xs-12">
+                    <div class="single_wedo wow fadeIn" data-wow-duration="1s">
+                        <a href="system.html#path-plan">
+                            <div class="single_left_icon">
+                                <img src="template/images/path_planning_maze.svg">
+                            </div>
+                            <div class="single_right_text">
+                                <h4>PATH PLANNING</h4>
+                                <div class="separetor2"></div>
+                                <p>The robot calculates the shortest path between points, then generates instructions on how to get there.</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6 col-sm-6 col-xs-12">
+                    <div class="single_wedo wow fadeIn" data-wow-duration="1s">
+                        <a href="system.html#road-sign">
+                            <div class="single_left_icon">
+                                <img src="template/images/signs.svg">
+                            </div>
+                            <div class="single_right_text">
+                                <h4>SIGN RECOGNITION</h4>
+                                <div class="separetor2"></div>
+                                <p>The robot can detect and identify different signs shapes, and perform different behaviors at each sign.</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6 col-sm-6 col-xs-12">
+                    <div class="single_wedo wow fadeIn" data-wow-duration="1s">
+                        <a href="system.html#lane-following">
+                            <div class="single_left_icon">
+                                <img src="template/images/road.svg">
+                            </div>
+                            <div class="single_right_text">
+                                <h4>LANE FOLLOWING</h4>
+                                <div class="separetor2"></div>
+                                <p>The robot uses edge detection algorithms to detect lanes and make adjustments to stay within the track boundaries.</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6 col-sm-6 col-xs-12">
+                    <div class="single_wedo wow fadeIn" data-wow-duration="1s">
+                        <a href="system.html#obstacle-avoid">
+                            <div class="single_left_icon">
+                                <img src="template/images/barrier.svg">
+                            </div>
+
+                            <div class="single_right_text">
+                                <h4>OBSTACLE AVOIDANCE</h4>
+                                <div class="separetor2"></div>
+                                <p>When the robot gets close to an obstacle, it can detect the proximity and change lanes to avoid it.</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<section id="steps" class="steps">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="head_title text-center wow fadeIn" data-wow-duration="1.5s">
+                <h2>OUR TEAM</h2>
+                <div class="separetor"></div>
+            </div>
+            <div class="main_steps_content text-center">
+                <div class="col-md-3">
+                    <div class="single_steps wow fadeIn" data-wow-duration="1s">
+                        <img src="template/images/jackie_pic.png" class="team_pics">
+                        <h4>JACKIE ZENG</h4>
+                    </div>
+                </div>
+                <div class="main_steps_content text-center">
+                    <div class="col-md-3">
+                        <div class="single_steps wow fadeIn" data-wow-duration="1s">
+                            <img src="template/images/melody_pic.png" class="team_pics">
+                            <h4>MELODY CHIU</h4>
+                        </div>
+                    </div>
+                <div class="col-md-3">
+                    <div class="single_steps wow fadeIn" data-wow-duration="1.8s">
+                        <img src="template/images/simrun_pic.png" class="team_pics">
+                        <h4>SIMRUN MUTHA</h4>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="single_steps wow fadeIn" data-wow-duration="2.8s">
+                        <img src="template/images/annabelle_pic.png" class="team_pics">
+                        <h4>ANNABELLE PLATT</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="featured" class="set-grey-bg">
+    <div class="container">
+        <div class="row">
+            <div class="head_title text-center wow flipInX" data-wow-duration="1s">
+                <h2>PHOTO GALLERY</h2>
+                <div class="separetor"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 photo-gallery">
+                <img src="template/images/intersection.jpg">
+                <img src="template/images/melodyatwork.jpg">
+                <img src="template/images/trafficlight.jpg">
+            </div>
+            <div class="col-md-4 photo-gallery">
+                <img src="template/images/jackietouchingrobot.jpg">
+                <img src="template/images/map.jpg">
+                <img src="template/images/pink_line.jpg">
+            </div>
+            <div class="col-md-4 photo-gallery">
+                <img src="template/images/trafficsigntaped.jpg">
+                <img src="template/images/broll.jpg">
+                <img src="template/images/jackieinaction.jpg">
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer id="footer" class="footer">
+    <div class="container">
+        <div class="row">
+            <div class="main_footer text-center wow zoomIn" data-wow-duration="1s">
+                <p>Made with <i class="fa fa-heart"></i> by <a href="http://bootstrapthemes.co">Bootstrap Themes</a>2016. All Rights Reserved</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- STRAT SCROLL TO TOP -->
+
+<div class="scrollup">
+    <a href="#"><i class="fa fa-chevron-up"></i></a>
+</div>
+
+
+
+
+
+
+<script type="text/javascript" src="template/js/jquery/jquery.js"></script>
+
+<script type="text/javascript" src="template/js/script.js"></script>
+
+
+<script type="text/javascript" src="template/js/fancybox/jquery.fancybox.pack.js"></script>
+
+<script type="text/javascript" src="template/js/nivo-lightbox/nivo-lightbox.min.js"></script>
+
+<script type="text/javascript" src="template/js/owl-carousel/owl.carousel.min.js"></script>
+
+
+
+
+
+<script type="text/javascript" src="template/js/jquery-easing/jquery.easing.1.3.js"></script>
+<script type="text/javascript" src="template/js/wow/wow.min.js"></script>
+<!--<script type="text/javascript" src="js/counterup/counterup.min.js"></script>-->
+
+<!--<script src="http://cdnjs.cloudflare.com/ajax/libs/waypoints/2.0.3/waypoints.min.js"></script>-->
+<!--<script type="text/javascript" src="js/counterup/jquery.counterup.min.js"></script>-->
+
+
+<script type="text/javascript" src="template/js/isotop/isotope.min.js"></script>
+<script type="text/javascript" src="template/js/isotop/isotop.function.js"></script>
+
+<script type="text/javascript" src="template/js/masonry/masonry.min.js"></script>
+
+<script type="text/javascript" src="template/js/mixitup/jquery.mixitup.min.js"></script>
+<script type="text/javascript" src="template/js/masonry/masonry.pkgd.min.js"></script>
+</body>
+</html>

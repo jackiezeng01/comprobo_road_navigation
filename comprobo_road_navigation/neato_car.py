@@ -5,26 +5,23 @@ import time
 import math
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import Twist, Vector3
 from nav_msgs.msg import Odometry
-from copy import deepcopy
 from cv_bridge import CvBridge
 import cv2
 import comprobo_road_navigation.helper_functions as helper_functions
-import numpy as np
-from geometry_msgs.msg import Twist, Vector3, Quaternion
-# from comprobo_road_navigation.shape_classification import ShapeClassifier
 from comprobo_road_navigation.obstacle_avoidance import ObstacleAvoidance
 from comprobo_road_navigation.path_planning import PathPlanning
 from comprobo_road_navigation.roadsign_detector import RoadSignDetector
 from comprobo_road_navigation.apriltag_detector import AprilTagDetector
-from comprobo_road_navigation.helper_functions import Point, Line, HoughLineDetection, euler_from_quaternion, undistort_img
+from comprobo_road_navigation.helper_functions import undistort_img
 from comprobo_road_navigation.lane_following import Lane_Follower
 
 class NeatoCar(Node):
-    """ The BallTracker is a Python object that encompasses a ROS node 
-        that can process images from the camera and search for a ball within.
-        The node will issue motor commands to move forward while keeping
-        the ball in the center of the camera's field of view. """
+    """ The NeatoCar is a Python object that encompasses a ROS node 
+        that can process images from the camera and autonomously navigate an indoor track, 
+        while following road traffic rules.
+    """
 
     def __init__(self, image_topic):
         """ Initialize the ball tracker """
@@ -55,18 +52,15 @@ class NeatoCar(Node):
         self.pathplanner = PathPlanning(start_node, end_node)
         self.pathplanner.node_to_node((2, 2), (5, 4))
         self.instructions = self.pathplanner.generate_instructions()
-        print("instructions: ", self.instructions)
         self.obstacle_avoidance = ObstacleAvoidance(self.pub)
         self.apriltag_detector = AprilTagDetector()
         self.roadsign_detector = RoadSignDetector()
         self.lane_follower = Lane_Follower()
         self.velocity = None
         self.turning_flag = False
-        self.stopping_flag = False
         self.drive_straight = True
         self.turn = False
         self.in_double_lane = False
-        # self.velocity = Twist()
         thread = Thread(target=self.loop_wrapper)
         thread.start()
 
@@ -80,7 +74,6 @@ class NeatoCar(Node):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         self.cv_image = undistort_img(cv_image)
         self.raw_cv_image = undistort_img(cv_image)
-
 
     def process_laserscan(self, msg):
         self.ranges = msg.ranges
@@ -102,7 +95,6 @@ class NeatoCar(Node):
                     if self.instructions != []:
                         instruction = self.instructions[0]
                         reached, self.cv_image = self.apriltag_detector.run_apriltag_detector(self.cv_image, self.raw_cv_image, instruction)
-                        # self.roadsign_to_obey = self.roadsign_detector.run_roadsign_detector(self.cv_image, self.raw_cv_image)
                         print("reached: ", reached)
                         # If we have reached an apriltag which has a turn instruction
                         if reached == 1:
@@ -112,29 +104,8 @@ class NeatoCar(Node):
                             self.last_instruction = self.instructions[0][0]
                             self.instructions.pop(0)
                     self.velocity, self.cv_image = self.lane_follower.run_lane_follower(self.cv_image, self.linear_speed, self.rotation_speed, self.orientation, self.position)
-
-
-                    """
-                    Integrating roadsign detection
-                    
-                    # If we have reached an apriltag which has a turn instruction
-                    if reached == 1:
-                        print("here")
-                        action = self.get_roadsign_action()
-                        if (action == 'stop'):
-                            self.stopping_flag = True
-                        else:
-                            self.turning_flag = True
-                    # If we have reached an apriltag which has a go straight instruction
-                    if reached == 2:
-                        action = self.get_roadsign_action()
-                        if (action == 'stop'):
-                            self.stopping_flag = True
-                    """
                 if self.turning_flag is True:
                     self.turning_behaviour(instruction[1])
-                if self.stopping_flag is True:
-                    self.stopping_behaviour()
                 if self.velocity is not None:
                     self.pub.publish(self.velocity)
                     
@@ -143,12 +114,13 @@ class NeatoCar(Node):
         # cv2.destroyAllWindows()
 
     def get_roadsign_action(self):
+        """ return 'go' or 'stop' based on the results from roadsign detection.
+        """
         if self.roadsign_to_obey == []:
             return 'go'
         elif 'Yield' in self.roadsign_to_obey or 'Stop' in self.roadsign_to_obey:
             return 'stop'
         return self.roadsign_detector.get_traffic_light_action(self.raw_cv_image)
-            
 
     def turn_ninety_deg(self):
         # set rotation speed 
@@ -163,7 +135,6 @@ class NeatoCar(Node):
     def turning(self, direction):
         if self.drive_straight:
             if time.time() - self.start_time > 5:
-                # print("her1")
                 self.drive_straight = False
                 self.turn = True
                 self.start_time = None
@@ -171,13 +142,11 @@ class NeatoCar(Node):
                 self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                 return self.velocity
             else:
-                # print("her2")
                 self.velocity.linear = Vector3(x=self.linear_speed, y=0.0, z=0.0)
                 self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
                 return self.velocity
         if self.turn:
             if time.time() - self.start_time >= 5:
-                # print("her3")
                 self.drive_straight = True
                 self.turn = False
                 self.start_time = None
@@ -188,7 +157,6 @@ class NeatoCar(Node):
                 self.instructions.pop(0)
                 return self.velocity 
             else:  
-                # print("her4")               
                 self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
                 if direction == "right":
                     self.velocity.angular = Vector3(x=0.0, y=0.0, z= -abs(self.rotation_speed))
@@ -196,62 +164,22 @@ class NeatoCar(Node):
                     self.velocity.angular = Vector3(x=0.0, y=0.0, z= abs(self.rotation_speed))
                 return self.velocity
 
-    def stopping(self):
-        if time.time() - self.start_time < 5:
-            print("stop function here 1")
-            self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
-            self.velocity.angular = Vector3(x=0.0, y=0.0, z=0.0)
-        else:
-            print("stop function here 2")
-            self.start_time = None
-            self.stopping_flag = False
-
-
     def turning_behaviour(self, direction):
-        if self.turning_flag: # TODO I think this if else statement is redundant cuz we only call this function is turning flag is true
+        if self.turning_flag:
             self.velocity = Twist()
             if self.start_time is None:
                 print("resetting time")
                 self.start_time = time.time()
-                # self.start_orientation = self.orientation
-                # self.start_position = self.position 
             self.velocity = self.turning(direction)
-            """
-            TODO ^^^ do we need to have self.turning return a velocity?
-            it's all in the same class, so we could possibly just modify self.velocity from within the self.turning function
-            """
-    
-    def stopping_behaviour(self):
-        # TODO test that this works
-        self.velocity = Twist()
-        if self.start_time is None:
-            print("resetting time")
-            self.start_time = time.time()
 
     def run_loop(self):
-        # NOTE: only do cv2.imshow and cv2.waitKey in this function 
-        
-        # self.velocity.linear.x = self.linear_speed
-        # if the turning flag is set to 1, the robot will turn until it reaches 90 degrees
-        # if self.turning_flag:
-        #     if self.start_orientation is None:
-        #         self.start_orientation = self.orientation
-        #     self.velocity.linear = Vector3(x=0.0, y=0.0, z=0.0)
-        #     self.velocity.angular = self.turn_ninety_deg()
-        #     print("vel",self.velocity)
         if self.cv_image is not None or self.image_obstacles is not None:
             if self.cv_image is not None:
                 cv2.imshow('video_window', self.cv_image)
             if self.image_obstacles is not None:
                 cv2.imshow('obst window', self.image_obstacles)
             cv2.waitKey(5)
-            # print(self.calibrate_mask)
-
-        # # self.obstacle_avoidance.find_lane_centers(self.cv_image)
-        # if self.obstacle_avoidance.cv_image is not None:
-        #     cv2.imshow('frame_with_centroids', self.obstacle_avoidance.cv_image)
-        #     cv2.waitKey(5)
-
+    
 if __name__ == '__main__':
     node = NeatoCar("/camera/image_raw")
     node.run()
