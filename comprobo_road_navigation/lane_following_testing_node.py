@@ -54,10 +54,10 @@ class Lane_Detector(Node):
         # rotation stuff
         self.start_orientation = None
         self.turn_start_time = None
-        self.ninety_deg_turn_time = 5.2 #sec
+        self.ninety_deg_turn_time = 5 #sec
         
         self.rot_speed = 0.3
-        self.lin_speed = 0.05
+        self.lin_speed = 0.1
         
         self.reset()
         self.calibrate_mask = False
@@ -67,7 +67,7 @@ class Lane_Detector(Node):
         self.last_lane_before_horizontal = None
         self.lane_slope_threshold = [0.5, 2]
         # if the horizontal line is below 400, it is too close to the robot and we should tunr
-        self.horizontal_y_threshold = 500
+        self.horizontal_y_threshold = 425
         # turns true if it has seen horizontal line
         self.num_horizontal_lines_detected = 0
 
@@ -321,9 +321,9 @@ class Lane_Detector(Node):
         expected_slope = 0.75
         threshold = 0.05
 
-        if (self.num_horizontal_lines_detected > 5):
+        if (self.num_horizontal_lines_detected > 10):
             pos = Position_in_Lane.centered
-            print("HOR DETECTED:", self.num_horizontal_lines_detected)
+            # print("HOR DETECTED:", self.num_horizontal_lines_detected)
         elif self.lane_center_pt:
             # if it needs to turn left, the center dot is to the left
             center_threshold = 20
