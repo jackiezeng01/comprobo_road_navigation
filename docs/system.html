@@ -170,6 +170,16 @@
                 the road. Edges detected within this region are most likely to be lane lines. This mask removed most
                 of the extraneous edges other than the occasional tile edge detection.
             </p>
+
+            <div class="col-sm-6">
+                <img src="template/images/canny_edges_all.jpg">
+                <p class="text-center">All canny edges</p>
+            </div>
+            <div class="col-sm-6">
+                <img src="template/images/canny_edges_segmented.jpg">
+                <p class="text-center">Segmented canny edges</p>
+            </div>
+
             <p>
                 By applying hough line transformation on the filtered edges, we got a list of lines detected where
                 each line is in the format of (x1, y1, x2, y2). To filter away the occasional vertical tile lines that
@@ -177,7 +187,13 @@
                 approximated to be between [0.5, 2] after taking the absolute value.
             </p>
 
-            <p><b>Finding Lane</b></p>
+
+            <div class="row">
+                <img class="center-img" src="template/images/hough_lines.jpg">
+                <p class="text-center">Lines detected with hough line transformation</p>
+            </div>
+
+            <p><b>Finding Lanes</b></p>
             <p>
                 We then split the detected lines into 3 groups based on their slopes: left lane, right lane, and
                 horizontal lanes.
@@ -191,6 +207,12 @@
                 We then took the average slope and y intercept of each of these groups and calculated the line to
                 represent each group.
             </p>
+
+            <div class="row">
+                <img class="center-img" src="template/images/lanes_with_intersection_pt.jpg">
+                <p class="text-center">Right & left lanes (yellow) and the intersection point (blue)</p>
+            </div>
+
             <p><b>Lane Following Behavior</b></p>
             <p>
                 For the lane following behavior, the neato needed to be able to stay in the center of the lanes while
@@ -245,6 +267,12 @@
                 side is most likely blocked and the robot should turn right. This is true vice versa for if the last
                 detected lane is on the right.
             </p>
+
+            <div class="row">
+                <img class="center-img" src="template/images/horizontal_line.jpg">
+                <p class="text-center">Ex: Neato detects the horizontal and left lanes, which means the robot should turn right since it's the only unblocked path</p>
+            </div>
+
         </div>
     </div>
 </section>
